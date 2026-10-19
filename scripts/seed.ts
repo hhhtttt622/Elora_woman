@@ -1,5 +1,6 @@
 import { getDb, run, get, all, tx } from '../lib/db';
 import { hash } from '../lib/auth-hash';
+import { ensureVariant } from '../lib/inventory';
 import { mkSku, slugify, nowIso, SHIPPING_FEE } from '../lib/util';
 
 const db = getDb();
@@ -8,7 +9,6 @@ if (process.argv.includes('--reset')) {
     db.exec(`DELETE FROM ${t}`);
   db.exec("DELETE FROM sqlite_sequence");
 }
-if (get<any>('SELECT COUNT(*) c FROM products').c > 0) { console.log('DB đã có dữ liệu. Chạy với --reset để nạp lại.'); process.exit(0); }
 
 const ago = (h: number) => new Date(Date.now() - h * 3600000).toISOString();
 const later = (h: number) => new Date(Date.now() + h * 3600000).toISOString();
@@ -16,25 +16,39 @@ const later = (h: number) => new Date(Date.now() + h * 3600000).toISOString();
 type P = [string, string, string, number, number | null, string[], string, string, string, boolean, boolean];
 // [code, name, category, price, salePrice, colors, material, description, tone, featured, isNew]
 const PRODUCTS: P[] = [
-  ['DSM', 'Đầm sơ mi kẻ sọc xanh than', 'Đầm', 1690000, null, ['Xanh navy'], 'Cotton pha lanh, lót mềm', 'Đầm sơ mi dáng suông có đai, kẻ sọc nhỏ, phù hợp ngày làm việc dài.', '#1F2A44', false, true],
-  ['DRS', 'Đầm bút chì đen xẻ sau', 'Đầm', 1560000, null, ['Đen'], 'Tweed dày, co giãn nhẹ', 'Đầm bút chì ôm vừa, xẻ sau kín đáo, lên dáng gọn trong họp và gặp đối tác.', '#1E1B1E', true, false],
-  ['DLU', 'Đầm lụa hồng phấn cổ đức', 'Đầm', 2390000, null, ['Hồng phấn'], 'Lụa tơ tằm tái chế', 'Đầm lụa cổ đức, tay dài, mềm rủ cho tiệc công ty và sự kiện.', '#EBC5CB', true, true],
-  ['BLS', 'Áo sơ mi lụa trắng cổ nơ', 'Áo', 1150000, null, ['Trắng', 'Hồng phấn'], 'Lụa satin, ít nhăn', 'Sơ mi cổ nơ thanh lịch, phối được với chân váy hoặc quần ống suông.', '#F4F1EC', true, false],
-  ['BLZ', 'Áo vest be dáng suông', 'Áo', 2190000, null, ['Be', 'Đen'], 'Vải tuyết mưa cao cấp', 'Blazer dáng suông, vai nhẹ, hợp đi làm hằng ngày.', '#E8DCCB', true, true],
-  ['KNT', 'Áo len mỏng xám tro cổ tròn', 'Áo', 890000, null, ['Xám'], 'Len merino pha', 'Áo len mỏng nhẹ cho văn phòng điều hòa lạnh.', '#B9B8B3', false, false],
-  ['BLK', 'Áo blazer đen một cúc', 'Áo', 2450000, null, ['Đen'], 'Wool pha polyester', 'Blazer một cúc, đường may sắc nét, mặc dịp quan trọng.', '#2A262A', false, false],
-  ['SKT', 'Chân váy bút chì xám khói', 'Chân váy', 1290000, 1032000, ['Xám'], 'Vải tuyết mưa', 'Chân váy bút chì cạp cao, dài qua gối.', '#8E8F8A', true, false],
-  ['SKP', 'Chân váy xếp ly nâu mocha', 'Chân váy', 1190000, null, ['Nâu'], 'Chiffon lót mềm', 'Chân váy xếp ly dài, tạo chuyển động nhẹ khi di chuyển.', '#7A5A44', false, true],
-  ['SKA', 'Chân váy chữ A xanh navy', 'Chân váy', 990000, null, ['Xanh navy'], 'Cotton pha', 'Chân váy chữ A gọn, hợp mọi dáng người.', '#1F2A44', false, false],
-  ['PNB', 'Quần ống suông đen cạp cao', 'Quần', 1250000, null, ['Đen'], 'Vải tuyết mưa, co giãn 2 chiều', 'Quần ống suông cạp cao kéo dài chân.', '#1E1B1E', true, false],
-  ['PNT', 'Quần tây be ống đứng', 'Quần', 1080000, null, ['Be'], 'Polyester pha viscose', 'Quần tây ống đứng, màu be dễ phối.', '#D9CDB8', false, false],
-  ['PNC', 'Quần culottes trắng', 'Quần', 1150000, null, ['Trắng'], 'Cotton lụa', 'Quần culottes ống rộng, thoáng cho mùa nóng.', '#F4F1EC', false, false],
-  ['BAG', 'Túi xách da dáng hộp', 'Phụ kiện', 1890000, null, ['Đen'], 'Da bò thật', 'Túi dáng hộp đựng vừa laptop 13 inch.', '#1E1B1E', true, false],
-  ['SCF', 'Khăn lụa hồng phấn', 'Phụ kiện', 590000, null, ['Hồng phấn'], 'Lụa twill', 'Khăn lụa vuông, quàng cổ hoặc buộc túi.', '#F3DCE1', false, true],
-  ['SHO', 'Giày cao gót mũi nhọn nude', 'Phụ kiện', 1490000, null, ['Be'], 'Da thật, đế cao 7 cm', 'Giày mũi nhọn màu nude kéo dài chân.', '#D9B9A4', false, false],
-  ['ERG', 'Hoa tai ngọc trai', 'Phụ kiện', 450000, null, ['Trắng'], 'Ngọc trai nhân tạo, khóa bạc', 'Hoa tai ngọc trai nhỏ, hợp mọi trang phục công sở.', '#F4F1EC', false, false],
-  ['BLT', 'Thắt lưng da nâu bản nhỏ', 'Phụ kiện', 690000, null, ['Nâu'], 'Da bò', 'Thắt lưng bản nhỏ cho đầm và quần cạp cao.', '#7A5A44', false, false],
+  ['DSM', 'Đầm sơ mi kẻ sọc có đai', 'Đầm', 1690000, null, ['Xanh navy', 'Be', 'Hồng phấn'], 'Cotton pha lanh, lót mềm', 'Đầm sơ mi dáng suông có đai, kẻ sọc nhỏ, phù hợp ngày làm việc dài.', '#1F2A44', false, true],
+  ['DRS', 'Đầm bút chì xẻ sau', 'Đầm', 1560000, null, ['Đen', 'Xanh navy', 'Be'], 'Tweed dày, co giãn nhẹ', 'Đầm bút chì ôm vừa, xẻ sau kín đáo, lên dáng gọn trong họp và gặp đối tác.', '#1E1B1E', true, false],
+  ['DLU', 'Đầm lụa cổ đức', 'Đầm', 2390000, null, ['Hồng phấn', 'Trắng', 'Đen'], 'Lụa tơ tằm tái chế', 'Đầm lụa cổ đức, tay dài, mềm rủ cho tiệc công ty và sự kiện.', '#EBC5CB', true, true],
+  ['BLS', 'Áo sơ mi lụa cổ nơ', 'Áo', 1150000, null, ['Trắng', 'Hồng phấn', 'Xanh navy'], 'Lụa satin, ít nhăn', 'Sơ mi cổ nơ thanh lịch, phối được với chân váy hoặc quần ống suông.', '#F4F1EC', true, false],
+  ['BLZ', 'Áo vest dáng suông', 'Áo', 2190000, null, ['Be', 'Đen', 'Xám'], 'Vải tuyết mưa cao cấp', 'Blazer dáng suông, vai nhẹ, hợp đi làm hằng ngày.', '#E8DCCB', true, true],
+  ['KNT', 'Áo len mỏng cổ tròn', 'Áo', 890000, null, ['Xám', 'Be', 'Nâu'], 'Len merino pha', 'Áo len mỏng nhẹ cho văn phòng điều hòa lạnh.', '#B9B8B3', false, false],
+  ['BLK', 'Áo blazer một cúc', 'Áo', 2450000, null, ['Đen', 'Xanh navy', 'Be'], 'Wool pha polyester', 'Blazer một cúc, đường may sắc nét, mặc dịp quan trọng.', '#2A262A', false, false],
+  ['SKT', 'Chân váy bút chì', 'Chân váy', 1290000, 1032000, ['Xám', 'Đen', 'Xanh navy'], 'Vải tuyết mưa', 'Chân váy bút chì cạp cao, dài qua gối.', '#8E8F8A', true, false],
+  ['SKP', 'Chân váy xếp ly', 'Chân váy', 1190000, null, ['Nâu', 'Đen', 'Be'], 'Chiffon lót mềm', 'Chân váy xếp ly dài, tạo chuyển động nhẹ khi di chuyển.', '#7A5A44', false, true],
+  ['SKA', 'Chân váy chữ A', 'Chân váy', 990000, null, ['Xanh navy', 'Be', 'Đen'], 'Cotton pha', 'Chân váy chữ A gọn, hợp mọi dáng người.', '#1F2A44', false, false],
+  ['PNB', 'Quần ống suông cạp cao', 'Quần', 1250000, null, ['Đen', 'Xám', 'Xanh navy'], 'Vải tuyết mưa, co giãn 2 chiều', 'Quần ống suông cạp cao kéo dài chân.', '#1E1B1E', true, false],
+  ['PNT', 'Quần tây ống đứng', 'Quần', 1080000, null, ['Be', 'Đen', 'Xám'], 'Polyester pha viscose', 'Quần tây ống đứng, dễ phối cùng trang phục công sở.', '#D9CDB8', false, false],
+  ['PNC', 'Quần culottes ống rộng', 'Quần', 1150000, null, ['Trắng', 'Be', 'Xanh navy'], 'Cotton lụa', 'Quần culottes ống rộng, thoáng cho mùa nóng.', '#F4F1EC', false, false],
+  ['BAG', 'Túi xách da dáng hộp', 'Phụ kiện', 1890000, null, ['Đen', 'Nâu', 'Be'], 'Da bò thật', 'Túi dáng hộp đựng vừa laptop 13 inch.', '#1E1B1E', true, false],
+  ['SCF', 'Khăn lụa vuông', 'Phụ kiện', 590000, null, ['Hồng phấn', 'Xanh navy', 'Trắng'], 'Lụa twill', 'Khăn lụa vuông, quàng cổ hoặc buộc túi.', '#F3DCE1', false, true],
+  ['SHO', 'Giày cao gót mũi nhọn', 'Phụ kiện', 1490000, null, ['Be', 'Đen', 'Nâu'], 'Da thật, đế cao 7 cm', 'Giày mũi nhọn, đế cao 7 cm, dễ phối cùng trang phục công sở.', '#D9B9A4', false, false],
+  ['ERG', 'Hoa tai ngọc trai', 'Phụ kiện', 450000, null, ['Trắng', 'Be', 'Đen'], 'Ngọc trai nhân tạo, khóa bạc', 'Hoa tai ngọc trai nhỏ, hợp mọi trang phục công sở.', '#F4F1EC', false, false],
+  ['BLT', 'Thắt lưng da bản nhỏ', 'Phụ kiện', 690000, null, ['Nâu', 'Đen', 'Be'], 'Da bò', 'Thắt lưng bản nhỏ cho đầm và quần cạp cao.', '#7A5A44', false, false],
 ];
+
+if (get<any>('SELECT COUNT(*) c FROM products').c > 0) {
+  tx(() => {
+    for (const [code, name, category, , , colors, , description] of PRODUCTS) {
+      const product = get<any>('SELECT id FROM products WHERE code=?', code);
+      if (!product) continue;
+      run('UPDATE products SET name=?,description=? WHERE id=?', name, description, product.id);
+      const sizes = category === 'Phụ kiện' ? ['FS'] : ['S', 'M', 'L', 'XL'];
+      for (const color of colors) for (const size of sizes) ensureVariant(product.id, color, size);
+    }
+  });
+  console.log('Đã cập nhật tên sản phẩm và các biến thể màu. SKU mới có tồn kho bằng 0; hãy nhập tồn trước khi bán.');
+  process.exit(0);
+}
 
 tx(() => {
   // người dùng
