@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { all, get, run, tx } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
 import { adjust, ensureVariant, listVariants, log, nextCode, takeFrom, availableOf, sweepHolds, capsuleSets } from '@/lib/inventory';
-import { LOCS, PO_STATUS, nowIso, slugify, barcodeDigits, sizeText } from '@/lib/util';
+import { CATEGORIES, COLORS, LOCS, PO_STATUS, nowIso, slugify, barcodeDigits, sizeText, sizesFor } from '@/lib/util';
 
 export type R = { ok?: boolean; error?: string; msg?: string; data?: any };
 const done = (msg: string, data?: any): R => { revalidatePath('/admin', 'layout'); return { ok: true, msg, data }; };
@@ -26,24 +26,58 @@ export async function setOrderStatus(code: string, status: number): Promise<R> {
 }
 
 // ---------- sản phẩm ----------
-export async function saveProduct(input: { id?: number; name: string; category: string; price: number; salePrice?: number | null; material: string; description: string; active: boolean; featured: boolean; isNew: boolean }): Promise<R> {
-  return guard(() => {
+export async function saveProduct(input: { id?: number; name: string; category: string; price: number; salePrice?: number | null; material: string; description: string; active: boolean; featured: boolean; isNew: boolean; colors: string[]; sizes: string[]; variantStocks: { color: string; size: string; quantity: number }[] }): Promise<R> {
+  return guard(() => tx(() => {
     if (input.name.trim().length < 2) throw new Error('Nhập tên sản phẩm.');
+    if (!CATEGORIES.includes(input.category)) throw new Error('Loại sản phẩm không hợp lệ.');
     if (!(input.price > 0)) throw new Error('Giá bán cần lớn hơn 0.');
-    if (input.salePrice && input.salePrice >= input.price) throw new Error('Giá khuyến mãi cần thấp hơn giá gốc.');
+    if (input.salePrice != null && input.salePrice > 0 && input.salePrice >= input.price) throw new Error('Giá khuyến mãi cần thấp hơn giá gốc.');
+    if (!Array.isArray(input.colors) || !input.colors.length || input.colors.some((color) => !COLORS.includes(color))) throw new Error('Chọn ít nhất một màu hợp lệ.');
+    const validSizes = sizesFor(input.category);
+    if (!Array.isArray(input.sizes) || !input.sizes.length || input.sizes.some((size) => !validSizes.includes(size))) throw new Error('Chọn ít nhất một kích cỡ hợp lệ.');
+    if (!Array.isArray(input.variantStocks)) throw new Error('Thông tin số lượng biến thể không hợp lệ.');
+    const colors = [...new Set(input.colors)];
+    const sizes = [...new Set(input.sizes)];
+    const quantities = new Map<string, number>();
+    for (const variantStock of input.variantStocks) {
+      if (!colors.includes(variantStock.color) || !sizes.includes(variantStock.size) || !Number.isSafeInteger(variantStock.quantity) || variantStock.quantity < 0)
+        throw new Error('Mỗi biến thể cần có số lượng nguyên không âm.');
+      const key = `${variantStock.color}::${variantStock.size}`;
+      if (quantities.has(key)) throw new Error('Biến thể màu và kích cỡ bị lặp.');
+      quantities.set(key, variantStock.quantity);
+    }
+    if (quantities.size !== colors.length * sizes.length) throw new Error('Thiếu số lượng cho một hoặc nhiều biến thể.');
+    for (const color of colors) for (const size of sizes) {
+      if (!quantities.has(`${color}::${size}`)) throw new Error('Thiếu số lượng cho một hoặc nhiều biến thể.');
+    }
+    let productId: number;
     if (input.id) {
+      if (!get('SELECT id FROM products WHERE id=?', input.id)) throw new Error('Không tìm thấy sản phẩm.');
       run('UPDATE products SET name=?,category=?,price=?,sale_price=?,material=?,description=?,active=?,featured=?,is_new=? WHERE id=?',
         input.name.trim(), input.category, input.price, input.salePrice || null, input.material, input.description, +input.active, +input.featured, +input.isNew, input.id);
+      productId = input.id;
     } else {
       const base = slugify(input.name); let slug = base, i = 2;
       while (get('SELECT id FROM products WHERE slug=?', slug)) slug = `${base}-${i++}`;
       const code = ({ 'Đầm': 'DRS', 'Áo': 'TOP', 'Chân váy': 'SKT', 'Quần': 'PNT', 'Phụ kiện': 'ACC' } as any)[input.category] + String((get<any>('SELECT COUNT(*) c FROM products').c || 0) + 1).padStart(2, '0');
-      run('INSERT INTO products(slug,code,name,category,price,sale_price,material,description,active,featured,is_new) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+      const result = run('INSERT INTO products(slug,code,name,category,price,sale_price,material,description,active,featured,is_new) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
         slug, code, input.name.trim(), input.category, input.price, input.salePrice || null, input.material, input.description, +input.active, +input.featured, +input.isNew);
+      productId = Number(result.lastInsertRowid);
+    }
+    for (const color of colors) for (const size of sizes) {
+      const variant = ensureVariant(productId, color, size);
+      const stock = get<any>(`SELECT v.id, COALESCE(SUM(CASE WHEN s.location='online' THEN s.qty END),0) online
+        FROM variants v LEFT JOIN stocks s ON s.variant_id=v.id WHERE v.sku=? GROUP BY v.id`, variant.sku);
+      const delta = quantities.get(`${color}::${size}`)! - stock.online;
+      if (delta < 0 && availableOf(variant.sku) < -delta) throw new Error(`Không thể giảm tồn ${variant.sku} thấp hơn số lượng đang được giữ cho đơn hàng.`);
+      if (delta !== 0) {
+        adjust(variant.sku, 'online', delta);
+        log(variant.sku, delta > 0 ? `+${delta}` : String(delta), 'Điều chỉnh tồn từ màn hình sản phẩm', 'online');
+      }
     }
     revalidatePath('/', 'layout');
-    return done('Đã lưu sản phẩm.');
-  }) as Promise<R>;
+    return done(input.id ? 'Đã cập nhật sản phẩm, biến thể và số lượng.' : 'Đã tạo sản phẩm cùng các SKU màu, size và số lượng.');
+  })) as Promise<R>;
 }
 export async function toggleProduct(id: number): Promise<R> {
   return guard(() => { run('UPDATE products SET active=1-active WHERE id=?', id); revalidatePath('/', 'layout'); return done('Đã đổi trạng thái hiển thị.'); }) as Promise<R>;

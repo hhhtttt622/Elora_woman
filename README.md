@@ -37,6 +37,7 @@ Chạy bản production: `npm run build && npm start`.
 - Reserved = hàng giữ cho stylist còn hạn + dòng hàng của đơn chưa xuất kho. Available = Physical - Reserved.
 - Khách chỉ đặt được khi Available đủ. Đơn chuyển sang "Đang giao" khi đóng gói ở mục Xuất kho, lúc đó mới trừ Physical.
 - Mọi thay đổi tồn kho ghi vào `inventory_logs`.
+- Ở Quản trị → Sản phẩm, chọn màu và kích cỡ để tạo SKU; nhập số lượng riêng cho từng tổ hợp tại Kho Online. Khi sửa sản phẩm, số lượng được cập nhật theo giá trị nhập và không được giảm thấp hơn hàng đang Reserved.
 
 ## Chưa làm (cần tích hợp ngoài)
 
