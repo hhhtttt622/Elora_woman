@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getUser } from '@/lib/auth';
 import { logoutAction } from '@/app/actions/auth';
+import { isInternal } from '@/lib/permissions';
 import { fmt, COLOR_HEX } from '@/lib/util';
 import type { ProductView } from '@/lib/shop';
 import CartLink from './CartLink';
@@ -12,7 +13,7 @@ export async function ShopHeader() {
       <div className="topbar">Miễn phí đổi size trong 7 ngày · Tư vấn phối đồ cá nhân hóa miễn phí · Hotline [SỐ HOTLINE]</div>
       <div className="wrap hdr">
         <Link href="/" className="logo">ELORA <i>woman</i></Link>
-        <nav className="nav" aria-label="Menu chính">
+        <nav className="nav nav-main" aria-label="Menu chính">
           <Link href="/san-pham">Sản phẩm</Link>
           <Link href="/san-pham?cat=Phụ kiện">Phụ kiện</Link>
           <Link href="/#outfit">Outfit</Link>
@@ -21,8 +22,7 @@ export async function ShopHeader() {
         </nav>
         <nav className="nav" aria-label="Tài khoản">
           {u ? (<>
-            {u.role === 'admin' && <Link href="/admin">Quản trị</Link>}
-            <Link href="/tai-khoan">{u.name.split(' ').slice(-1)[0]}</Link>
+            {isInternal(u.role) ? <Link href="/admin">Quản trị</Link> : <Link href="/tai-khoan" title={u.name}>Tài khoản</Link>}
             <form action={logoutAction}><button className="textbtn" style={{ textTransform: 'uppercase', letterSpacing: '.1em', fontSize: 13, textDecoration: 'none', color: 'inherit' }}>Đăng xuất</button></form>
           </>) : <Link href="/dang-nhap">Đăng nhập</Link>}
           <CartLink />
@@ -58,10 +58,10 @@ export function ProductImage({ p, label }: { p: Pick<ProductView, 'tone' | 'cate
 
 export function ProductCard({ p }: { p: ProductView }) {
   return (
-    <Link href={`/san-pham/${p.slug}`} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <Link href={`/san-pham/${p.slug}`} className="pcard" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <ProductImage p={p} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <span style={{ fontSize: 14, fontWeight: 500 }}>{p.name}</span>
+        <span className="pname" style={{ fontSize: 14, fontWeight: 500 }}>{p.name}</span>
         <span className="price">{p.salePrice ? <><b style={{ color: '#A3162F' }}>{fmt(p.salePrice)}</b><s>{fmt(p.price)}</s></> : <b>{fmt(p.price)}</b>}</span>
         <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           {p.colors.map((c) => <i key={c} className="sw" style={{ background: COLOR_HEX[c], width: 14, height: 14 }} title={c} />)}

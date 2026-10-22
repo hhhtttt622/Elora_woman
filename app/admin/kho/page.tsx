@@ -1,13 +1,15 @@
 import Link from 'next/link';
-import { listVariants } from '@/lib/inventory';
+import { listVariants, stockStatus } from '@/lib/inventory';
 import { all } from '@/lib/db';
 import { PageHead } from '@/components/admin/Bits';
 import SkuForm from '@/components/admin/SkuForm';
 import Barcode from '@/components/admin/Barcode';
 import { norm, sizeText, shelfOf } from '@/lib/util';
+import { requirePage } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 
-export default function Stock({ searchParams }: { searchParams: { q?: string; f?: string; tem?: string } }) {
+export default async function Stock({ searchParams }: { searchParams: { q?: string; f?: string; tem?: string } }) {
+  const me = await requirePage('UC-22', '/admin/kho');
   const vs = listVariants();
   const q = norm(searchParams.q || '');
   const f = searchParams.f || 'all';
@@ -21,8 +23,8 @@ export default function Stock({ searchParams }: { searchParams: { q?: string; f?
   return (
     <>
       <PageHead group="Quản lý kho" title="Tồn kho và SKU" />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 16 }}>
-        <div className="kpi"><span className="lbl">Thực tế (Physical)</span><b>{sum('physical')}</b><span className="note">Hàng đang nằm trong các kho</span></div>
+      <div className="kpis">
+        <div className="kpi"><span className="lbl">Thực tế (Physical)</span><b>{sum('physical')}</b><span className="note">Kho Online và Showroom, không gồm kho thanh lý</span></div>
         <div className="kpi"><span className="lbl">Tạm giữ (Reserved)</span><b>{sum('reserved')}</b><span className="note">Đơn chờ xuất và hàng giữ cho stylist</span></div>
         <div className="kpi"><span className="lbl">Khả dụng (Available)</span><b>{sum('available')}</b><span className="note">Khả dụng = Thực tế trừ Tạm giữ</span></div>
         <div className="kpi"><span className="lbl">Số SKU</span><b>{vs.length}</b><span className="note">{alerts} SKU dưới ngưỡng an toàn</span></div>
@@ -30,8 +32,8 @@ export default function Stock({ searchParams }: { searchParams: { q?: string; f?
       <SkuForm products={products} />
       <form method="get" className="row"><div className="fl" style={{ flex: '1 1 280px', maxWidth: 420 }}><label className="lbl" htmlFor="sq">Tìm theo SKU hoặc tên</label><input id="sq" name="q" className="fld" defaultValue={searchParams.q} placeholder="Ví dụ: BLZ hoặc vest" /></div>{f !== 'all' && <input type="hidden" name="f" value={f} />}<button className="ghost" style={{ minHeight: 44 }}>Tìm</button>
         <div role="group" aria-label="Lọc tồn kho" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{[['all', 'Tất cả'], ['alert', 'Dưới ngưỡng'], ['out', 'Hết hàng']].map(([k, l]) => <Link key={k} href={qs(k === 'all' ? {} : { f: k })} className={'chip' + (f === k ? ' on' : '')}>{l}</Link>)}</div></form>
-      <div className="scroll"><table className="tb" style={{ minWidth: 1160 }}><caption>Hiển thị {rows.length} / {vs.length} SKU</caption>
-        <thead><tr><th>SKU</th><th>Biến thể</th><th>Online</th><th>Showroom</th><th>Styling</th><th>Thực tế</th><th>Tạm giữ</th><th>Khả dụng</th><th>Ngưỡng</th><th>Trạng thái</th><th>Tem</th></tr></thead>
+      <div className="scroll tall"><table className="tb" style={{ minWidth: 1160 }}><caption>Hiển thị {rows.length} / {vs.length} SKU</caption>
+        <thead><tr><th>SKU</th><th>Biến thể</th><th>Kho Online</th><th>Showroom</th><th>Thanh lý, sửa chữa</th><th>Thực tế</th><th>Tạm giữ</th><th>Khả dụng</th><th>Ngưỡng</th><th>Trạng thái</th><th>Tem</th></tr></thead>
         <tbody>{Object.entries(groups).map(([pid, list]) => (<FragmentRows key={pid} list={list} />))}</tbody></table></div>
       {tem && (
         <section className="card"><h2 className="h2">Tem mác và mã vạch</h2>
@@ -50,7 +52,7 @@ function FragmentRows({ list }: { list: ReturnType<typeof listVariants> }) {
   return (<>
     <tr className="grp"><td colSpan={11}>{first.productName} · {list.length} biến thể · tồn thực tế {list.reduce((n, v) => n + v.physical, 0)} · khả dụng {list.reduce((n, v) => n + v.available, 0)}</td></tr>
     {list.map((v) => {
-      const st = v.available <= 0 ? ['Hết hàng', 'red'] : v.available < v.minStock ? ['Sắp hết', 'pink'] : ['Ổn định', ''];
-      return (<tr key={v.sku}><td style={{ whiteSpace: 'nowrap' }}><b>{v.sku}</b></td><td style={{ whiteSpace: 'nowrap' }}>{v.color} · {sizeText(v.size)}</td><td>{v.online}</td><td>{v.showroom}</td><td>{v.styling}</td><td><b>{v.physical}</b></td><td>{v.reserved}</td><td><b>{v.available}</b></td><td>{v.minStock}</td><td><span className={'badge ' + st[1]}>{st[0]}</span></td><td><Link className="ghost" href={`/admin/kho?tem=${v.sku}`} aria-label={`Xem tem ${v.sku}`}>Xem tem</Link></td></tr>);
+      const st = stockStatus(v); const cls = st === 'Hết hàng' ? 'red' : st === 'Sắp hết' ? 'pink' : '';
+      return (<tr key={v.sku}><td style={{ whiteSpace: 'nowrap' }}><b>{v.sku}</b></td><td style={{ whiteSpace: 'nowrap' }}>{v.color} · {sizeText(v.size)}</td><td>{v.online}</td><td>{v.showroom}</td><td>{v.repair}</td><td><b>{v.physical}</b></td><td>{v.reserved}</td><td><b>{v.available}</b></td><td>{v.minStock}</td><td><span className={'badge ' + cls}>{st}</span></td><td><Link className="ghost" href={`/admin/kho?tem=${v.sku}`} aria-label={`Xem tem ${v.sku}`}>Xem tem</Link></td></tr>);
     })}</>);
 }

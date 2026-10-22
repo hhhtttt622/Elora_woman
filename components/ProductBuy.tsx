@@ -14,7 +14,8 @@ export default function ProductBuy({ p, variants, advice }: { p: P; variants: V[
   const colors = [...new Set(variants.map((v) => v.color))];
   const sizes = [...new Set(variants.map((v) => v.size))].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
   const [color, setColor] = useState(colors.find((c) => variants.some((v) => v.color === c && v.available > 0)) || colors[0]);
-  const [size, setSize] = useState('');
+  // UC-06 luồng 2a: khách có số đo thì chọn sẵn size gợi ý nếu còn hàng
+  const [size, setSize] = useState(() => (advice && variants.some((v) => v.color === color && v.size === advice && v.available > 0) ? advice : ''));
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const cur = useMemo(() => variants.find((v) => v.color === color && v.size === size), [variants, color, size]);

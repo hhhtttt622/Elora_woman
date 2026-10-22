@@ -1,8 +1,16 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import { SCHEMA } from './schema';
+import { SCHEMA, MIGRATIONS, INDEXES } from './schema';
 
 const g = globalThis as unknown as { __eloraDb?: Database.Database };
+
+function migrate(db: Database.Database) {
+  const cols: Record<string, Set<string>> = {};
+  for (const [table, col, def] of MIGRATIONS) {
+    cols[table] ||= new Set((db.prepare(`PRAGMA table_info(${table})`).all() as any[]).map((c) => c.name));
+    if (!cols[table].has(col)) { db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`); cols[table].add(col); }
+  }
+}
 
 export function getDb(): Database.Database {
   if (!g.__eloraDb) {
@@ -12,6 +20,8 @@ export function getDb(): Database.Database {
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
     db.exec(SCHEMA);
+    migrate(db);
+    db.exec(INDEXES);
     g.__eloraDb = db;
   }
   return g.__eloraDb;

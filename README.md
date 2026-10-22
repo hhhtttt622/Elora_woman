@@ -13,6 +13,7 @@ npm run dev        # http://localhost:3000
 ```
 
 Nạp lại dữ liệu mẫu từ đầu: `npm run db:reset`.
+Database tạo từ bản 2.0 được tự thêm cột mới khi khởi động, nhưng dữ liệu cũ (kho Styling, stylist dạng chữ) không được chuyển đổi. Chạy `npm run db:reset` sau khi cập nhật lên bản 3.0.
 Chạy bản production: `npm run build && npm start`.
 
 ## Tài khoản mẫu
@@ -20,24 +21,32 @@ Chạy bản production: `npm run build && npm start`.
 | Vai trò | Email | Mật khẩu |
 |---|---|---|
 | Khách hàng | ha.nguyen@example.com | elora123 |
-| Quản trị | admin@elora.vn | admin123 |
+| Stylist | stylist@elora.vn, stylist2@elora.vn | stylist123 |
+| Nhân viên | kho@elora.vn | nhanvien123 |
+| Admin | admin@elora.vn | admin123 |
+
+Tài khoản nội bộ mới do admin tạo ở Quản trị → Tài khoản người dùng, kèm mật khẩu tạm; người dùng phải đổi mật khẩu ở lần đăng nhập đầu.
 
 Đổi `SESSION_SECRET` trong `.env` và mật khẩu admin trước khi triển khai thật.
 
 ## Cấu trúc
 
 - `app/(shop)` cửa hàng: trang chủ, danh mục + lọc, chi tiết sản phẩm, giỏ hàng, thanh toán, tài khoản, đăng nhập/đăng ký, tư vấn
-- `app/admin` quản trị: tổng quan, đơn hàng, sản phẩm, khách hàng, tư vấn phối đồ và 7 mục kho (`app/admin/kho/*`)
-- `app/actions` Server Actions (auth, đặt hàng, toàn bộ nghiệp vụ admin/kho). Mọi action admin kiểm tra quyền.
+- `app/admin` quản trị: tổng quan theo vai trò, đơn hàng, sản phẩm, khách hàng, tư vấn phối đồ, 6 mục kho (`app/admin/kho/*`), tài khoản người dùng, báo cáo doanh thu, đổi mật khẩu
+- `app/actions` Server Actions (auth, đặt hàng, toàn bộ nghiệp vụ admin/kho). Mỗi action kiểm tra quyền theo mã use case ở máy chủ.
+- `lib/permissions.ts` ma trận phân quyền 5 vai trò (mục 3.2 đặc tả v3.0); `lib/nav.ts` menu quản trị lọc theo quyền
+- `lib/auth.ts` phiên đăng nhập 7 ngày lưu trong bảng `sessions`; khóa tài khoản hoặc đổi mật khẩu hủy phiên ngay
 - `lib/inventory.ts` lõi tồn kho: 3 mức Physical / Reserved / Available, giữ hàng hết hạn tự nhả, nhật ký biến động
 - `lib/schema.ts` cấu trúc database, `scripts/seed.ts` dữ liệu mẫu
 
 ## Quy tắc kho
 
-- Reserved = hàng giữ cho stylist còn hạn + dòng hàng của đơn chưa xuất kho. Available = Physical - Reserved.
+- Kho: Kho Online, Showroom (kho bán) và Kho thanh lý & sửa chữa (hàng đổi trả lỗi, không tính vào tồn Thực tế).
+- Physical = Kho Online + Showroom. Reserved = lệnh giữ của stylist còn hạn + dòng hàng của đơn chưa xuất kho. Available = Physical - Reserved.
 - Khách chỉ đặt được khi Available đủ. Đơn chuyển sang "Đang giao" khi đóng gói ở mục Xuất kho, lúc đó mới trừ Physical.
-- Mọi thay đổi tồn kho ghi vào `inventory_logs`.
-- Ở Quản trị → Sản phẩm, chọn màu và kích cỡ để tạo SKU; nhập số lượng riêng cho từng tổ hợp tại Kho Online. Khi sửa sản phẩm, số lượng được cập nhật theo giá trị nhập và không được giảm thấp hơn hàng đang Reserved.
+- Mọi thay đổi tồn kho ghi vào `inventory_logs`, kèm người thực hiện và mã chứng từ.
+- Lệnh giữ không bị xóa mà chuyển trạng thái: Đang giữ, Đã chốt mua, Đã nhả, Hết hạn tự nhả.
+- Quản trị → Sản phẩm (admin) chỉ quản lý thông tin chung. SKU và tồn đầu kỳ do nhân viên tạo ở Tồn kho và SKU; tồn chỉ thay đổi qua nhập xưởng, xuất kho, điều chuyển, đổi trả, giữ hàng và bán capsule.
 
 ## Chưa làm (cần tích hợp ngoài)
 

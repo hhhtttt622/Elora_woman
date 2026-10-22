@@ -13,6 +13,7 @@ function Submit() {
 export default function ProfileForm({ u }: { u: any }) {
   const [st, action] = useFormState<Res, FormData>(updateProfileAction, {});
   const liked = String(u.liked_colors || "").split(", ");
+  const fe = st.fields || {};
   return (
     <form action={action} className="card" style={{ gap: 18, maxWidth: 720 }}>
       <div className="grid">
@@ -25,7 +26,9 @@ export default function ProfileForm({ u }: { u: any }) {
             name="name"
             className="fld"
             defaultValue={u.name}
+            aria-invalid={!!fe.name}
           />
+          {fe.name && <span className="err">{fe.name}</span>}
         </div>
         <div className="fl">
           <label className="lbl" htmlFor="p-email">
@@ -48,7 +51,9 @@ export default function ProfileForm({ u }: { u: any }) {
             name="phone"
             className="fld"
             defaultValue={u.phone}
+            aria-invalid={!!fe.phone}
           />
+          {fe.phone && <span className="err">{fe.phone}</span>}
         </div>
         <div className="fl">
           <label className="lbl" htmlFor="p-work">

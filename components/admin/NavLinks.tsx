@@ -1,17 +1,18 @@
 'use client';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-const NAV: ([string] | [string, string])[] = [
-  ['Bán hàng'], ['/admin', 'Tổng quan'], ['/admin/don-hang', 'Đơn hàng'], ['/admin/san-pham', 'Sản phẩm'], ['/admin/khach-hang', 'Khách hàng'], ['/admin/tu-van', 'Tư vấn phối đồ'],
-  ['Quản lý kho'], ['/admin/kho', 'Tồn kho và SKU'], ['/admin/kho/capsule', 'Combo capsule'], ['/admin/kho/dat-may', 'Đặt may và nhập kho'], ['/admin/kho/dieu-chuyen', 'Kho và điều chuyển'],
-  ['/admin/kho/giu-hang', 'Giữ hàng styling'], ['/admin/kho/xuat-kho', 'Xuất kho và đổi trả'], ['/admin/kho/nhat-ky', 'Cảnh báo và nhật ký'],
-];
-export default function NavLinks({ badges }: { badges: Record<string, number> }) {
+export default function NavLinks({ nav, badges }: { nav: { group: string; items: [string, string][] }[]; badges: Record<string, number> }) {
   const path = usePathname();
-  return (
-    <nav aria-label="Menu quản trị" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {NAV.map((n) => n.length === 1 ? <span key={n[0]} className="nh">{n[0]}</span> : (
-        <Link key={n[0]} href={n[0]} className={'sn' + (path === n[0] ? ' on' : '')} aria-current={path === n[0] ? 'page' : undefined}>{n[1]}{badges[n[0]] > 0 && <span className="bd">{badges[n[0]]}</span>}</Link>))}
+  // trên mobile menu thu gọn sau nút Menu, tự đóng khi chuyển trang
+  const [open, setOpen] = useState(false);
+  useEffect(() => setOpen(false), [path]);
+  const current = nav.flatMap((g) => g.items).find(([h]) => h === path)?.[1];
+  return (<>
+    <button type="button" className="menu-btn" aria-expanded={open} aria-controls="admin-nav" onClick={() => setOpen(!open)}>{open ? 'Đóng menu' : `Menu${current ? ' · ' + current : ''}`}</button>
+    <nav id="admin-nav" data-open={open} aria-label="Menu quản trị" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {nav.map((g) => [<span key={g.group} className="nh">{g.group}</span>, ...g.items.map(([href, label]) => (
+        <Link key={href} href={href} className={'sn' + (path === href ? ' on' : '')} aria-current={path === href ? 'page' : undefined}>{label}{badges[href] > 0 && <span className="bd">{badges[href]}</span>}</Link>))])}
     </nav>
-  );
+  </>);
 }

@@ -26,7 +26,7 @@ export default function PoForm({ products, init }: { products: { id: number; nam
         </div>
         <span className="lbl">Số lượng theo size</span>
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(110px,1fr))' }}>{sizes.map((z) => <div key={z} className="fl"><label className="lbl" htmlFor={`poq-${z}`} style={{ fontWeight: 500 }}>Size {sizeText(z)}</label><input id={`poq-${z}`} type="number" className="fld" value={qty[z] || ''} onChange={(e) => setQty({ ...qty, [z]: e.target.value })} placeholder="0" /></div>)}</div>
-        <div className="row"><span style={{ fontSize: 14, padding: '10px 14px', background: '#F6EEEF', border: '1px solid var(--ink)' }}>Tổng {total} sản phẩm, chi phí gia công {fmt(total * (parseInt(f.cost, 10) || 0))}</span><button className="btn" disabled={pending}>Gửi phiếu cho xưởng</button></div>
+        <div className="row"><span style={{ fontSize: 14, padding: '10px 14px', background: '#F6EEEF', border: '1px solid var(--line)' }}>Tổng {total} sản phẩm, chi phí gia công {fmt(total * (parseInt(f.cost, 10) || 0))}</span><button className="btn" disabled={pending}>Gửi phiếu cho xưởng</button></div>
         {err && <p className="err" role="alert">{err}</p>}
       </form></section>);
 }

@@ -3,9 +3,11 @@ import { all } from '@/lib/db';
 import { PageHead } from '@/components/admin/Bits';
 import OrderSelect from '@/components/admin/OrderSelect';
 import { ORDER_STATUS, fmt, dmy } from '@/lib/util';
+import { requirePage } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 
-export default function Orders({ searchParams }: { searchParams: { s?: string } }) {
+export default async function Orders({ searchParams }: { searchParams: { s?: string } }) {
+  const me = await requirePage('UC-17', '/admin/don-hang');
   const f = searchParams.s !== undefined && searchParams.s !== '' ? parseInt(searchParams.s, 10) : -1;
   const orders = all<any>('SELECT o.*, u.name uname FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.id DESC').map((o) => ({ ...o, lines: all<any>('SELECT * FROM order_lines WHERE order_id=?', o.id) }));
   const rows = orders.filter((o) => f === -1 || o.status === f);

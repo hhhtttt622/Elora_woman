@@ -5,10 +5,12 @@ import { Act } from '@/components/admin/Flash';
 import PoForm from '@/components/admin/PoForm';
 import QcPanel from '@/components/admin/QcPanel';
 import { advancePo, markWorkshopReturn } from '@/app/actions/admin';
-import { PO_STATUS, fmt, sizeText } from '@/lib/util';
+import { PO_STATUS, fmt, sizeText, dmy } from '@/lib/util';
+import { requirePage } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 
-export default function Po({ searchParams }: { searchParams: { qc?: string; sku?: string } }) {
+export default async function Po({ searchParams }: { searchParams: { qc?: string; sku?: string } }) {
+  const me = await requirePage('UC-26', '/admin/kho/dat-may');
   const pos = all<any>('SELECT p.*, pr.name pname FROM purchase_orders p JOIN products pr ON pr.id=p.product_id ORDER BY p.id DESC').map((p) => ({ ...p, lines: all<any>('SELECT size, qty FROM po_lines WHERE po_id=? ORDER BY id', p.id) }));
   const qc = searchParams.qc ? pos.find((p) => p.code === searchParams.qc && p.status === 2) : null;
   const products = all<any>('SELECT id,name,category FROM products ORDER BY id');
@@ -28,7 +30,7 @@ export default function Po({ searchParams }: { searchParams: { qc?: string; sku?
       {qc && <QcPanel key={qc.code} code={qc.code} title={`${qc.code} · ${qc.pname} · ${qc.color}`} lines={qc.lines} />}
       <PoForm key={searchParams.sku || 'new'} products={products} init={{ pid: pre ? String(pre.pid) : '', color: pre?.color || '', size: pre?.size || '' }} />
       <section className="card"><h2 className="h2">Phiếu trả xưởng sửa</h2>{!wr.length && <span className="note">Chưa có phiếu nào.</span>}
-        <ul className="list">{wr.map((w) => <li key={w.id}><span><b>{w.code}</b> · {w.po_code}<br /><span className="note">{w.text}</span></span><span style={{ display: 'flex', gap: 10, alignItems: 'center' }}><span className={'badge ' + (w.status === 'Đã trả xưởng' ? 'dark' : 'pink')}>{w.status}</span>{w.status !== 'Đã trả xưởng' && <Act action={markWorkshopReturn} args={[w.id]}>Đánh dấu đã trả</Act>}</span></li>)}</ul></section>
+        <ul className="list">{wr.map((w) => <li key={w.id}><span><b>{w.code}</b> · {w.po_code}<br /><span className="note">{w.text}{w.returned_at ? ` · trả ngày ${dmy(w.returned_at)}` : ''}</span></span><span style={{ display: 'flex', gap: 10, alignItems: 'center' }}><span className={'badge ' + (w.status === 'Đã trả xưởng' ? 'dark' : 'pink')}>{w.status}</span>{w.status !== 'Đã trả xưởng' && <Act action={markWorkshopReturn} args={[w.id]}>Đánh dấu đã trả</Act>}</span></li>)}</ul></section>
     </>
   );
 }

@@ -22,7 +22,7 @@ export default function SkuForm({ products }: { products: { id: number; name: st
           <div className="fl"><label className="lbl" htmlFor="nv-qty">Tồn đầu kỳ (Kho Online)</label><input id="nv-qty" type="number" className="fld" value={f.qty} onChange={set('qty')} placeholder="0" /></div>
           <div className="fl"><label className="lbl" htmlFor="nv-min">Ngưỡng an toàn</label><input id="nv-min" type="number" className="fld" value={f.min} onChange={set('min')} /></div>
         </div>
-        <div className="row"><span style={{ fontSize: 14, padding: '10px 14px', background: '#F6EEEF', border: '1px solid var(--ink)' }}>Mã SKU sẽ sinh: <b>{p ? mkSku(p.code, f.color, size) : ''}</b></span><button className="btn" disabled={pending}>Tạo SKU</button></div>
+        <div className="row"><span style={{ fontSize: 14, padding: '10px 14px', background: '#F6EEEF', border: '1px solid var(--line)' }}>Mã SKU sẽ sinh: <b>{p ? mkSku(p.code, f.color, size) : ''}</b></span><button className="btn" disabled={pending}>Tạo SKU</button></div>
         {err && <p className="err" role="alert">{err}</p>}
         <span className="note">Quy tắc mã: ELR, mã sản phẩm, mã màu, size. Ví dụ ELR-BLZ-BE-M là blazer màu Be size M.</span>
       </form></section>);

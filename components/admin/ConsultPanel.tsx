@@ -1,24 +1,35 @@
 'use client';
 import { useState } from 'react';
 import { useRun } from './Flash';
-import { saveConsult, sendConsultSet } from '@/app/actions/admin';
+import { assignStylist, saveConsult, sendConsultSet } from '@/app/actions/admin';
 
 type Cand = { sku: string; label: string };
 type Pick = { sku: string; label: string; priceText: string; availText: string };
-export default function ConsultPanel({ id, stylist: st0, message: m0, picks: p0, cands, hasHolds }: { id: number; stylist: string; message: string; picks: Pick[]; cands: Cand[]; hasHolds: boolean }) {
+
+/** UC-12 luồng 5a: admin phân công hoặc đổi stylist. */
+export function AssignStylist({ id, current, stylists }: { id: number; current: number | ''; stylists: { id: number; name: string }[] }) {
   const { run, pending } = useRun();
-  const [stylist, setStylist] = useState(st0);
+  const [sel, setSel] = useState(String(current || stylists[0]?.id || ''));
+  return (
+    <div className="row">
+      <div className="fl" style={{ maxWidth: 300, flex: '1 1 220px' }}>
+        <label className="lbl" htmlFor="cs-stylist">{current ? 'Đổi stylist phụ trách' : 'Phân công stylist'}</label>
+        <select id="cs-stylist" className="fld" value={sel} onChange={(e) => setSel(e.target.value)}>{stylists.length ? stylists.map((s) => <option key={s.id} value={s.id}>{s.name}</option>) : <option value="">Chưa có stylist đang hoạt động</option>}</select>
+      </div>
+      <button type="button" className="ghost" style={{ minHeight: 44 }} disabled={pending || !sel || sel === String(current)} onClick={() => run(assignStylist(id, parseInt(sel, 10)))}>Lưu phân công</button>
+    </div>);
+}
+
+/** UC-13 soạn set nháp và UC-14 gửi gợi ý. */
+export default function ConsultPanel({ id, message: m0, picks: p0, cands, hasHolds }: { id: number; message: string; picks: Pick[]; cands: Cand[]; hasHolds: boolean }) {
+  const { run, pending } = useRun();
   const [message, setMessage] = useState(m0);
   const [add, setAdd] = useState(cands[0]?.sku || '');
   const [hours, setHours] = useState('24');
   const skus = p0.map((p) => p.sku);
-  const save = (picks = skus) => run(saveConsult(id, { stylist, message, picks }));
+  const save = (picks = skus) => run(saveConsult(id, { message, picks }));
   return (
     <>
-      <div className="fl" style={{ maxWidth: 300 }}>
-        <label className="lbl" htmlFor="cs-stylist">Stylist phụ trách</label>
-        <select id="cs-stylist" className="fld" value={stylist} onChange={(e) => setStylist(e.target.value)}><option value="">Chưa phân công</option>{['Stylist 1', 'Stylist 2', 'Stylist 3'].map((s) => <option key={s}>{s}</option>)}</select>
-      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="lbl">Sản phẩm trong set gợi ý</span>
         {!p0.length && <span className="note">Chưa chọn sản phẩm nào.</span>}
@@ -31,10 +42,10 @@ export default function ConsultPanel({ id, stylist: st0, message: m0, picks: p0,
       </div>
       <div className="fl"><label className="lbl" htmlFor="cs-msg">Lời nhắn gửi khách</label><textarea id="cs-msg" className="fld" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Ví dụ: Với buổi họp sáng Thứ Hai, chị thử set này..." /></div>
       <div className="fl" style={{ maxWidth: 300 }}><label className="lbl" htmlFor="cs-hours">Giữ hàng cho khách</label><select id="cs-hours" className="fld" value={hours} onChange={(e) => setHours(e.target.value)}><option value="24">24 giờ</option><option value="48">48 giờ</option></select></div>
-      <span className="note">Khi gửi gợi ý, các món trong set được tạm giữ. Hết thời hạn mà khách chưa chốt, hệ thống nhả hàng về kho bán.{hasHolds ? ' Gửi lại sẽ gia hạn thời gian giữ.' : ''}</span>
+      <span className="note">Khi gửi gợi ý, mỗi món trong set được giữ 1 sản phẩm. Hết thời hạn mà khách chưa chốt, hệ thống tự nhả hàng về kho bán.{hasHolds ? ' Gửi lại chỉ gia hạn thời gian giữ, không giữ thêm.' : ''}</span>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         <button type="button" className="ghost" style={{ minHeight: 48 }} disabled={pending} onClick={() => save()}>Lưu nháp</button>
-        <button type="button" className="btn" disabled={pending} onClick={async () => { const r = await run(saveConsult(id, { stylist, message, picks: skus })); if (!r.error) await run(sendConsultSet(id, parseInt(hours, 10))); }}>Gửi gợi ý và giữ hàng</button>
+        <button type="button" className="btn" disabled={pending || !p0.length} onClick={async () => { const r = await run(saveConsult(id, { message, picks: skus })); if (!r.error) await run(sendConsultSet(id, parseInt(hours, 10))); }}>Gửi gợi ý và giữ hàng</button>
       </div>
     </>
   );
