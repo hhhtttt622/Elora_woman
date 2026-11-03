@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRun } from '../Flash';
 import { useConfirm } from '@/components/ui/Confirm';
 import { setOrderStatus } from '@/app/actions/admin';
@@ -13,7 +13,9 @@ export default function OrderStatusForm({ code, status }: { code: string; status
   const { run, pending } = useRun();
   const confirm = useConfirm();
   const [v, setV] = useState(status);
-  useEffect(() => setV(status), [status]);
+  // Trạng thái đổi sau router.refresh(): đặt lại lựa chọn ngay trong lúc render, không cần effect (tránh một lần render thừa).
+  const [prevStatus, setPrevStatus] = useState(status);
+  if (prevStatus !== status) { setPrevStatus(status); setV(status); }
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (v === status) return;

@@ -10,3 +10,4 @@ tests/baseline
 test-results
 playwright-report
 tsconfig.tsbuildinfo
+vercel-react-best-practices/

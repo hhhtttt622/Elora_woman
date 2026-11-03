@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useFormState, useFormStatus } from 'react-dom';
 import { createConsultAction } from '@/app/actions/shop';
 import type { Res } from '@/app/actions/auth';
@@ -10,7 +11,7 @@ function Submit() { const { pending } = useFormStatus(); return <button classNam
 
 export default function ConsultForm({ loggedIn }: { loggedIn: boolean }) {
   const [st, action] = useFormState<Res, FormData>(createConsultAction, {});
-  if (!loggedIn) return <div className="card" style={{ background: '#F6EEEF' }}><p>Hãy <a href="/dang-nhap?next=/tu-van" style={{ textDecoration: 'underline', fontWeight: 600, color: 'var(--wine)' }}>đăng nhập</a> để gửi yêu cầu tư vấn, stylist sẽ trả lời ngay trong tài khoản của bạn.</p></div>;
+  if (!loggedIn) return <div className="card" style={{ background: '#F6EEEF' }}><p>Hãy <Link href="/dang-nhap?next=/tu-van" style={{ textDecoration: 'underline', fontWeight: 600, color: 'var(--wine)' }}>đăng nhập</Link> để gửi yêu cầu tư vấn, stylist sẽ trả lời ngay trong tài khoản của bạn.</p></div>;
   return (
     <form action={action} className="card" style={{ gap: 18 }}>
       <div className="grid">

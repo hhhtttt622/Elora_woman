@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { listVariants, stockStatus } from '@/lib/inventory';
+import { getVariants, stockStatus, type VariantRow } from '@/lib/inventory';
 import { all } from '@/lib/db';
 import { PageHead } from '@/components/admin/Bits';
 import SkuForm from '@/components/admin/SkuForm';
@@ -10,12 +10,20 @@ export const dynamic = 'force-dynamic';
 
 export default async function Stock({ searchParams }: { searchParams: { q?: string; f?: string; tem?: string } }) {
   const me = await requirePage('UC-22', '/admin/kho');
-  const vs = listVariants();
+  const vs = getVariants();
   const q = norm(searchParams.q || '');
   const f = searchParams.f || 'all';
   const rows = vs.filter((v) => (!q || norm(v.sku).includes(q) || norm(v.productName).includes(q)) && (f === 'alert' ? v.available < v.minStock : f === 'out' ? v.available <= 0 : true));
-  const sum = (k: 'physical' | 'reserved' | 'available') => vs.reduce((n, v) => n + v[k], 0);
-  const alerts = vs.filter((v) => v.available < v.minStock).length;
+  let totalPhysical = 0;
+  let totalReserved = 0;
+  let totalAvailable = 0;
+  let alerts = 0;
+  for (const v of vs) {
+    totalPhysical += v.physical;
+    totalReserved += v.reserved;
+    totalAvailable += v.available;
+    if (v.available < v.minStock) alerts++;
+  }
   const tem = searchParams.tem ? vs.find((v) => v.sku === searchParams.tem) : null;
   const products = all<any>('SELECT id,name,code,category FROM products ORDER BY id');
   const groups: Record<number, typeof rows> = {}; rows.forEach((v) => (groups[v.productId] ||= []).push(v));
@@ -24,9 +32,9 @@ export default async function Stock({ searchParams }: { searchParams: { q?: stri
     <>
       <PageHead group="Quản lý kho" title="Tồn kho và SKU" />
       <div className="kpis">
-        <div className="kpi"><span className="lbl">Thực tế (Physical)</span><b>{sum('physical')}</b><span className="note">Kho Online và Showroom, không gồm kho thanh lý</span></div>
-        <div className="kpi"><span className="lbl">Tạm giữ (Reserved)</span><b>{sum('reserved')}</b><span className="note">Đơn chờ xuất và hàng giữ cho stylist</span></div>
-        <div className="kpi"><span className="lbl">Khả dụng (Available)</span><b>{sum('available')}</b><span className="note">Khả dụng = Thực tế trừ Tạm giữ</span></div>
+        <div className="kpi"><span className="lbl">Thực tế (Physical)</span><b>{totalPhysical}</b><span className="note">Kho Online và Showroom, không gồm kho thanh lý</span></div>
+        <div className="kpi"><span className="lbl">Tạm giữ (Reserved)</span><b>{totalReserved}</b><span className="note">Đơn chờ xuất và hàng giữ cho stylist</span></div>
+        <div className="kpi"><span className="lbl">Khả dụng (Available)</span><b>{totalAvailable}</b><span className="note">Khả dụng = Thực tế trừ Tạm giữ</span></div>
         <div className="kpi"><span className="lbl">Số SKU</span><b>{vs.length}</b><span className="note">{alerts} SKU dưới ngưỡng an toàn</span></div>
       </div>
       <SkuForm products={products} />
@@ -47,10 +55,16 @@ export default async function Stock({ searchParams }: { searchParams: { q?: stri
   );
 }
 
-function FragmentRows({ list }: { list: ReturnType<typeof listVariants> }) {
+function FragmentRows({ list }: { list: VariantRow[] }) {
   const first = list[0];
+  let groupPhysical = 0;
+  let groupAvailable = 0;
+  for (const v of list) {
+    groupPhysical += v.physical;
+    groupAvailable += v.available;
+  }
   return (<>
-    <tr className="grp"><td colSpan={11}>{first.productName} · {list.length} biến thể · tồn thực tế {list.reduce((n, v) => n + v.physical, 0)} · khả dụng {list.reduce((n, v) => n + v.available, 0)}</td></tr>
+    <tr className="grp"><td colSpan={11}>{first.productName} · {list.length} biến thể · tồn thực tế {groupPhysical} · khả dụng {groupAvailable}</td></tr>
     {list.map((v) => {
       const st = stockStatus(v); const cls = st === 'Hết hàng' ? 'red' : st === 'Sắp hết' ? 'pink' : '';
       return (<tr key={v.sku}><td style={{ whiteSpace: 'nowrap' }}><b>{v.sku}</b></td><td style={{ whiteSpace: 'nowrap' }}>{v.color} · {sizeText(v.size)}</td><td>{v.online}</td><td>{v.showroom}</td><td>{v.repair}</td><td><b>{v.physical}</b></td><td>{v.reserved}</td><td><b>{v.available}</b></td><td>{v.minStock}</td><td><span className={'badge ' + cls}>{st}</span></td><td><Link className="ghost" href={`/admin/kho?tem=${v.sku}`} aria-label={`Xem tem ${v.sku}`}>Xem tem</Link></td></tr>);

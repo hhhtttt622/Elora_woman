@@ -20,12 +20,27 @@ export default async function Orders({ searchParams }: { searchParams: SP }) {
   await requirePage('UC-17', BASE);
   const f = searchParams.s !== undefined && searchParams.s !== '' ? parseInt(searchParams.s, 10) : -1;
   const q = norm(searchParams.q || '');
-  const orders = all<any>('SELECT o.*, u.name uname, u.email uemail FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.id DESC')
-    .map((o) => ({ ...o, lines: all<any>('SELECT * FROM order_lines WHERE order_id=?', o.id) }));
+  const rawOrders = all<any>('SELECT o.*, u.name uname, u.email uemail FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.id DESC');
+  const allLines = all<any>('SELECT * FROM order_lines ORDER BY order_id, id');
+  const linesByOrderId = new Map<number, any[]>();
+  for (const line of allLines) {
+    let list = linesByOrderId.get(line.order_id);
+    if (!list) {
+      list = [];
+      linesByOrderId.set(line.order_id, list);
+    }
+    list.push(line);
+  }
+  const orders = rawOrders.map((o) => ({ ...o, lines: linesByOrderId.get(o.id) || [] }));
   const found = orders.filter((o) => !q || norm(o.code).includes(q) || norm(o.uname).includes(q) || norm(o.recv_name).includes(q));
   const rows = found.filter((o) => f === -1 || o.status === f);
   const pg = paginate(rows, searchParams.page);
-  const cnt = (k: number) => (k === -1 ? found.length : found.filter((o) => o.status === k).length);
+
+  const statusCounts = new Map<number, number>();
+  for (const o of found) {
+    statusCounts.set(o.status, (statusCounts.get(o.status) || 0) + 1);
+  }
+  const cnt = (k: number) => (k === -1 ? found.length : statusCounts.get(k) || 0);
   const sel = searchParams.order ? orders.find((o) => o.code === searchParams.order) : null;
   const open = (code: string) => hrefWith(BASE, searchParams, { order: code });
 

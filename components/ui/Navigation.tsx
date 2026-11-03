@@ -41,7 +41,12 @@ export function SearchBar({ name = 'q', label, placeholder, defaultValue, params
 export function Pagination({ base, params, page, pages, total, size }: { base: string; params: Params; page: number; pages: number; total: number; size: number }) {
   if (total <= size) return null;
   const from = (page - 1) * size + 1, to = Math.min(total, page * size);
-  const nums = Array.from({ length: pages }, (_, i) => i + 1).filter((n) => n === 1 || n === pages || Math.abs(n - page) <= 1);
+  const nums: number[] = [];
+  for (let n = 1; n <= pages; n++) {
+    if (n === 1 || n === pages || Math.abs(n - page) <= 1) {
+      nums.push(n);
+    }
+  }
   const href = (n: number) => hrefWith(base, params, { page: n === 1 ? null : n });
   return (
     <div className="ui-pager">

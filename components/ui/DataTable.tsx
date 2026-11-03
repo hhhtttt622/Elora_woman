@@ -24,7 +24,7 @@ type Props<T> = {
 
 /** Tầng 2 – bảng dữ liệu dùng chung (Server Component). */
 export default function DataTable<T>({ columns, rows, rowKey, caption, minWidth = 720, mobile = 'scroll', tall, rowClassName, empty }: Props<T>) {
-  if (!rows.length && empty) return <EmptyState {...empty} />;
+  if (rows.length === 0 && empty) return <EmptyState {...empty} />;
   return (
     <div className={'scroll' + (tall ? ' tall' : '')}>
       <table className={'tb ui-table' + (mobile === 'cards' ? ' ui-table--cards' : '')} style={{ minWidth }}>

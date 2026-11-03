@@ -4,7 +4,7 @@ import { getUser } from '@/lib/auth';
 import { isInternal } from '@/lib/permissions';
 import PasswordForm from '@/components/PasswordForm';
 import { all, get } from '@/lib/db';
-import { sweepHolds } from '@/lib/inventory';
+import { sweepHoldsOnce } from '@/lib/inventory';
 import ProfileForm from '@/components/ProfileForm';
 import { ORDER_STATUS, HOLD_STATUS, fmt, dmy, dmyHm, hoursLeft, nowIso } from '@/lib/util';
 export const dynamic = 'force-dynamic';
@@ -16,11 +16,50 @@ export default async function Account({ searchParams }: { searchParams: { tab?: 
   if (!s) redirect('/dang-nhap?next=/tai-khoan');
   // UC-04, UC-09, UC-11 chỉ dành cho khách hàng; nhân sự nội bộ dùng trang quản trị
   if (isInternal(s.role)) redirect(s.mustChangePw ? '/admin/tai-khoan-cua-toi' : '/admin');
-  sweepHolds();
+  sweepHoldsOnce();
   const tab = s.mustChangePw ? 'password' : TABS.some((t) => t[0] === searchParams.tab) ? searchParams.tab! : 'info';
-  const u = get<any>('SELECT * FROM users WHERE id=?', s.id);
-  const orders = all<any>('SELECT * FROM orders WHERE user_id=? ORDER BY id DESC', s.id).map((o) => ({ ...o, lines: all<any>('SELECT * FROM order_lines WHERE order_id=?', o.id) }));
-  const consults = all<any>('SELECT c.*, st.name sname FROM consults c LEFT JOIN users st ON st.id=c.stylist_id WHERE c.user_id=? ORDER BY c.id DESC', s.id).map((c) => ({ ...c, holds: all<any>('SELECT h.*, p.name FROM holds h JOIN variants v ON v.sku=h.sku JOIN products p ON p.id=v.product_id WHERE h.consult_id=? AND h.status=? AND h.expires_at > ?', c.id, HOLD_STATUS.active, nowIso()) }));
+  // Chỉ lấy cột cần hiển thị: `u` được truyền xuống ProfileForm (client), không được mang password_hash.
+  const u = get<any>('SELECT name, email, phone, size, liked_colors, work_env, height_cm, weight_kg FROM users WHERE id=?', s.id);
+
+  const rawOrders = all<any>('SELECT * FROM orders WHERE user_id=? ORDER BY id DESC', s.id);
+  const orderIds = rawOrders.map((o) => o.id);
+  const linesByOrderId = new Map<number, any[]>();
+  if (orderIds.length > 0) {
+    const orderLines = all<any>(`SELECT * FROM order_lines WHERE order_id IN (${orderIds.map(() => '?').join(',')})`, ...orderIds);
+    for (const l of orderLines) {
+      let list = linesByOrderId.get(l.order_id);
+      if (!list) {
+        list = [];
+        linesByOrderId.set(l.order_id, list);
+      }
+      list.push(l);
+    }
+  }
+  const orders = rawOrders.map((o) => ({ ...o, lines: linesByOrderId.get(o.id) || [] }));
+  // Theo dõi: mọi đơn chưa giao + đơn đã giao gần nhất.
+  const tracking: typeof orders = [];
+  let lastDelivered: (typeof orders)[number] | undefined;
+  for (const o of orders) {
+    if (o.status < 3) tracking.push(o);
+    else if (o.status === 3 && !lastDelivered) lastDelivered = o;
+  }
+  if (lastDelivered) tracking.push(lastDelivered);
+
+  const rawConsults = all<any>('SELECT c.*, st.name sname FROM consults c LEFT JOIN users st ON st.id=c.stylist_id WHERE c.user_id=? ORDER BY c.id DESC', s.id);
+  const consultIds = rawConsults.map((c) => c.id);
+  const holdsByConsultId = new Map<number, any[]>();
+  if (consultIds.length > 0) {
+    const allHolds = all<any>(`SELECT h.*, p.name FROM holds h JOIN variants v ON v.sku=h.sku JOIN products p ON p.id=v.product_id WHERE h.consult_id IN (${consultIds.map(() => '?').join(',')}) AND h.status=? AND h.expires_at > ?`, ...consultIds, HOLD_STATUS.active, nowIso());
+    for (const h of allHolds) {
+      let list = holdsByConsultId.get(h.consult_id);
+      if (!list) {
+        list = [];
+        holdsByConsultId.set(h.consult_id, list);
+      }
+      list.push(h);
+    }
+  }
+  const consults = rawConsults.map((c) => ({ ...c, holds: holdsByConsultId.get(c.id) || [] }));
   return (
     <div className="wrap" style={{ paddingTop: 48, display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div><span className="eb">Tài khoản</span><h1 className="disp" style={{ fontSize: 'clamp(34px,4vw,52px)', lineHeight: 1 }}>Xin chào, {u.name}</h1></div>
@@ -36,7 +75,7 @@ export default async function Account({ searchParams }: { searchParams: { tab?: 
           <tbody>{orders.map((o) => <tr key={o.id}><td><b>{o.code}</b></td><td>{dmy(o.created_at)}</td><td>{o.lines.map((l: any) => `${l.qty} × ${l.name}`).join('; ')}</td><td>{fmt(o.total)}</td><td><span className={'badge' + (o.status === 3 ? ' dark' : o.status === 0 ? ' pink' : ' sand')}>{ORDER_STATUS[o.status]}</span></td></tr>)}</tbody></table></div>)}
 
       {tab === 'track' && (orders.length === 0 ? <div className="card" style={{ background: '#F6EEEF' }}>Chưa có đơn nào để theo dõi.</div> :
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 20 }}>{orders.filter((o) => o.status < 3).concat(orders.filter((o) => o.status === 3).slice(0, 1)).map((o) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 20 }}>{tracking.map((o) => (
           <div key={o.id} className="card"><b>{o.code}</b><span className="note">Đặt ngày {dmy(o.created_at)} · {fmt(o.total)}{o.tracking ? ` · Vận đơn ${o.carrier} ${o.tracking}` : ''}</span>
             <ol className="list" style={{ display: 'flex', flexDirection: 'column' }}>{ORDER_STATUS.map((s, i) => <li key={s} style={{ justifyContent: 'flex-start', gap: 12, fontWeight: i <= o.status ? 600 : 400, color: i <= o.status ? 'var(--ink)' : '#6A6168' }}><span className={'badge' + (i <= o.status ? ' dark' : '')} style={{ minWidth: 28, textAlign: 'center' }}>{i + 1}</span>{s}{i === o.status ? ' (hiện tại)' : ''}</li>)}</ol></div>))}</div>)}
 

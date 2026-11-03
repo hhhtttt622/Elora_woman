@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logoutAction } from '@/app/actions/auth';
@@ -10,10 +10,18 @@ type User = { name: string; email: string; roleLabel: string };
 
 // Nhãn cho đoạn đường dẫn con không có trong menu (route chi tiết).
 const SEGMENT_LABEL: Record<string, string> = { 'kiem-hang': 'Kiểm hàng' };
+const WS_RE = /\s+/;
+
+const isOn = (path: string, href: string) => path === href || (href !== '/admin' && path.startsWith(href + '/'));
 
 function crumbsOf(path: string, nav: Nav) {
-  const flat = nav.flatMap((g) => g.items.map(([href, label]) => ({ href, label, group: g.group })));
-  const hit = flat.filter((i) => path === i.href || (i.href !== '/admin' && path.startsWith(i.href + '/'))).sort((a, b) => b.href.length - a.href.length)[0];
+  // Mục menu khớp dài nhất: một lượt duyệt, không cần flatMap + filter + sort.
+  let hit: { href: string; label: string; group: string } | null = null;
+  for (const g of nav) {
+    for (const [href, label] of g.items) {
+      if (isOn(path, href) && (!hit || href.length > hit.href.length)) hit = { href, label, group: g.group };
+    }
+  }
   if (!hit) return [{ label: 'Quản trị', href: '/admin' }];
   const out: { label: string; href?: string }[] = [{ label: hit.group }, { label: hit.label, href: path === hit.href ? undefined : hit.href }];
   path.slice(hit.href.length).split('/').filter(Boolean).forEach((s) => out.push({ label: SEGMENT_LABEL[s] || decodeURIComponent(s) }));
@@ -29,7 +37,9 @@ export default function AdminChrome({ nav, badges, user, children }: { nav: Nav;
   const [open, setOpen] = useState(false);
   const [mobile, setMobile] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
-  useEffect(() => setOpen(false), [path]);
+  // Đổi trang thì đóng menu off-canvas ngay trong lúc render (không cần effect + render lại).
+  const [prevPath, setPrevPath] = useState(path);
+  if (prevPath !== path) { setPrevPath(path); setOpen(false); }
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 820px)');
     const on = () => setMobile(mq.matches);
@@ -42,8 +52,8 @@ export default function AdminChrome({ nav, badges, user, children }: { nav: Nav;
     document.addEventListener('keydown', k);
     return () => document.removeEventListener('keydown', k);
   }, [open]);
-  const crumbs = crumbsOf(path, nav);
-  const initials = user.name.split(/\s+/).slice(-2).map((w) => w[0]).join('').toUpperCase();
+  const crumbs = useMemo(() => crumbsOf(path, nav), [path, nav]);
+  const initials = useMemo(() => user.name.split(WS_RE).slice(-2).map((w) => w[0]).join('').toUpperCase(), [user.name]);
   const hidden = mobile && !open;
 
   return (
@@ -55,7 +65,7 @@ export default function AdminChrome({ nav, badges, user, children }: { nav: Nav;
         </div>
         <nav id="admin-nav" aria-label="Menu quản trị" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {nav.map((g) => [<span key={g.group} className="nh">{g.group}</span>, ...g.items.map(([href, label]) => {
-            const on = path === href || (href !== '/admin' && path.startsWith(href + '/'));
+            const on = isOn(path, href);
             return <Link key={href} href={href} className={'sn' + (on ? ' on' : '')} aria-current={on ? 'page' : undefined}>{label}{badges[href] > 0 && <span className="bd" aria-label={`${badges[href]} việc đang chờ`}>{badges[href]}</span>}</Link>;
           })])}
         </nav>
@@ -64,7 +74,7 @@ export default function AdminChrome({ nav, badges, user, children }: { nav: Nav;
 
       <div className="acol">
         <header className="ahead">
-          <button ref={toggle} type="button" className="ui-icon-btn menu-toggle" aria-label={open ? 'Đóng menu' : 'Mở menu'} aria-expanded={open} aria-controls="admin-side" onClick={() => setOpen(!open)}>☰</button>
+          <button ref={toggle} type="button" className="ui-icon-btn menu-toggle" aria-label={open ? 'Đóng menu' : 'Mở menu'} aria-expanded={open} aria-controls="admin-side" onClick={() => setOpen((o) => !o)}>☰</button>
           <nav aria-label="Đường dẫn" className="ui-crumbs">
             <ol>{crumbs.map((c, i) => <li key={i}>{c.href ? <Link href={c.href}>{c.label}</Link> : <span aria-current={i === crumbs.length - 1 ? 'page' : undefined}>{c.label}</span>}</li>)}</ol>
           </nav>

@@ -46,8 +46,10 @@ export function ShopFooter() {
   );
 }
 
+const DARK_TONES = new Set(['#1E1B1E', '#1F2A44', '#2A262A', '#7A5A44']);
+
 export function ProductImage({ p, label }: { p: Pick<ProductView, 'tone' | 'category' | 'isNew' | 'salePrice'>; label?: string }) {
-  const dark = ['#1E1B1E', '#1F2A44', '#2A262A', '#7A5A44'].includes(p.tone);
+  const dark = DARK_TONES.has(p.tone);
   return (
     <div className="pimg" style={{ background: `linear-gradient(160deg, ${p.tone}, ${p.tone}CC 55%, #FFFFFF22)`, color: dark ? '#fff' : '#1E1B1E' }}>
       {p.salePrice ? <span className="tag sale" style={{ background: '#A3162F', color: '#fff' }}>SALE</span> : p.isNew ? <span className="tag" style={{ background: '#1E1B1E', color: '#fff' }}>MỚI</span> : null}

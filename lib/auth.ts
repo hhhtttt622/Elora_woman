@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SignJWT, jwtVerify } from 'jose';
@@ -33,7 +34,7 @@ export function revokeSessions(userId: number, exceptSid?: string) {
   run("UPDATE sessions SET status='revoked' WHERE user_id=? AND status='active' AND id != ?", userId, exceptSid || '');
 }
 
-export async function getUser(): Promise<SessionUser | null> {
+export const getUser = cache(async (): Promise<SessionUser | null> => {
   const t = cookies().get(COOKIE)?.value;
   if (!t) return null;
   try {
@@ -42,7 +43,7 @@ export async function getUser(): Promise<SessionUser | null> {
       WHERE s.id=? AND s.status='active' AND s.expires_at > ? AND u.status='active'`, String(payload.sid), new Date().toISOString());
     return row ? { id: row.id, name: row.name, email: row.email, role: row.role, mustChangePw: !!row.must_change_pw, sid: String(payload.sid) } : null;
   } catch { return null; }
-}
+});
 
 /** Kiểm tra quyền cho server action. Máy chủ kiểm tra ở mọi thao tác (BR-05). */
 export async function requirePerm(uc: Perm) {

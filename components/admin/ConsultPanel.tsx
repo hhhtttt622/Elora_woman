@@ -32,7 +32,7 @@ export default function ConsultPanel({ id, message: m0, picks: p0, cands, hasHol
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="lbl">Sản phẩm trong set gợi ý</span>
-        {!p0.length && <span className="note">Chưa chọn sản phẩm nào.</span>}
+        {p0.length === 0 ? <span className="note">Chưa chọn sản phẩm nào.</span> : null}
         <ul className="list">{p0.map((p) => <li key={p.sku}><span>{p.label} · {p.priceText}<br /><span className="note">{p.sku} · {p.availText}</span></span><button type="button" className="textbtn" onClick={() => save(skus.filter((s) => s !== p.sku))} aria-label={`Bỏ ${p.label}`}>Bỏ</button></li>)}</ul>
         <div className="row">
           <div className="fl" style={{ flex: '1 1 260px' }}><label className="lbl" htmlFor="cs-add" style={{ fontWeight: 500 }}>Thêm sản phẩm còn hàng</label>
@@ -45,7 +45,7 @@ export default function ConsultPanel({ id, message: m0, picks: p0, cands, hasHol
       <span className="note">Khi gửi gợi ý, mỗi món trong set được giữ 1 sản phẩm. Hết thời hạn mà khách chưa chốt, hệ thống tự nhả hàng về kho bán.{hasHolds ? ' Gửi lại chỉ gia hạn thời gian giữ, không giữ thêm.' : ''}</span>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         <button type="button" className="ghost" style={{ minHeight: 48 }} disabled={pending} onClick={() => save()}>Lưu nháp</button>
-        <button type="button" className="btn" disabled={pending || !p0.length} onClick={async () => { const r = await run(saveConsult(id, { message, picks: skus })); if (!r.error) await run(sendConsultSet(id, parseInt(hours, 10))); }}>Gửi gợi ý và giữ hàng</button>
+        <button type="button" className="btn" disabled={pending || p0.length === 0} onClick={async () => { const r = await run(saveConsult(id, { message, picks: skus })); if (!r.error) await run(sendConsultSet(id, parseInt(hours, 10))); }}>Gửi gợi ý và giữ hàng</button>
       </div>
     </>
   );

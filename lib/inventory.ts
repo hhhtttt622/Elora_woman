@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { all, get, run, tx } from './db';
 import { LOC_KEYS, SELL_LOCS, HOLD_STATUS, nowIso, mkSku, stampDay, pad, barcodeDigits } from './util';
 
@@ -52,6 +53,14 @@ export function listVariants(productId?: number): VariantRow[] {
   });
 }
 
+/**
+ * Bản dùng khi RENDER trang (layout + page + component trong cùng một request):
+ * React.cache gộp các lần gọi trong một request thành một lần đọc DB.
+ * Server action phải gọi thẳng sweepHolds()/listVariants() để luôn đọc dữ liệu mới sau khi ghi.
+ */
+export const sweepHoldsOnce = cache(() => sweepHolds());
+export const getVariants = cache((): VariantRow[] => { sweepHoldsOnce(); return listVariants(); });
+
 export function variantBySku(sku: string) { return listVariants().find((v) => v.sku === sku); }
 
 export function availableOf(sku: string) {
@@ -100,13 +109,18 @@ export function nextCode(prefix: string, table: string) {
 }
 
 /** Số set khả dụng = khả dụng nhỏ nhất trong các món thành phần (BR-06). */
-export function capsuleSets(sku: string[]) {
-  const vs = listVariants();
-  const comps = sku.map((s) => vs.find((v) => v.sku === s)).filter(Boolean) as VariantRow[];
-  if (!comps.length) return { sets: 0, limit: '' };
-  const sets = Math.max(0, Math.min(...comps.map((c) => Math.min(c.available, c.online))));
-  const lim = comps.find((c) => Math.max(0, Math.min(c.available, c.online)) === sets);
-  return { sets, limit: lim?.sku || '' };
+export function capsuleSets(sku: string[], bySku?: Map<string, VariantRow>) {
+  // Truyền sẵn bản đồ SKU khi tính cho nhiều capsule để không đọc lại toàn bộ tồn kho mỗi lần.
+  const map = bySku ?? new Map(listVariants().map((v) => [v.sku, v]));
+  let sets = Infinity;
+  let limit = '';
+  for (const s of sku) {
+    const c = map.get(s);
+    if (!c) continue;
+    const n = Math.max(0, Math.min(c.available, c.online));
+    if (n < sets) { sets = n; limit = c.sku; }
+  }
+  return sets === Infinity ? { sets: 0, limit: '' } : { sets, limit };
 }
 export const stockStatus = (v: Pick<VariantRow, 'available' | 'minStock'>) => (v.available <= 0 ? 'Hết hàng' : v.available < v.minStock ? 'Sắp hết' : 'Ổn định');
 export { barcodeDigits, LOC_KEYS };

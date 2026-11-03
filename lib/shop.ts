@@ -1,5 +1,5 @@
-import { all, get } from './db';
-import { listVariants, sweepHolds, VariantRow } from './inventory';
+import { all } from './db';
+import { getVariants, type VariantRow } from './inventory';
 import { norm } from './util';
 
 export type ProductView = {
@@ -7,14 +7,31 @@ export type ProductView = {
   tone: string; active: number; featured: number; isNew: number; colors: string[]; sizes: string[]; variants: VariantRow[]; inStock: boolean;
 };
 
+/** Chỉ dùng khi render trang (đọc qua getVariants() đã cache theo request). */
 export function allProducts(opts: { includeInactive?: boolean } = {}): ProductView[] {
-  sweepHolds();
-  const vs = listVariants();
+  const vs = getVariants();
+  const variantsByProduct = new Map<number, VariantRow[]>();
+  for (const v of vs) {
+    let list = variantsByProduct.get(v.productId);
+    if (!list) {
+      list = [];
+      variantsByProduct.set(v.productId, list);
+    }
+    list.push(v);
+  }
+
   const rows = all<any>('SELECT id,slug,code,name,category,price,sale_price salePrice,material,description,tone,active,featured,is_new isNew FROM products ORDER BY id');
   return rows.filter((p) => opts.includeInactive || p.active).map((p) => {
-    const mine = vs.filter((v) => v.productId === p.id);
-    const sellable = mine.filter((v) => v.available > 0);
-    return { ...p, variants: mine, colors: [...new Set(mine.map((v) => v.color))], sizes: [...new Set(mine.map((v) => v.size))], inStock: sellable.length > 0 };
+    const mine = variantsByProduct.get(p.id) || [];
+    const colors = new Set<string>();
+    const sizes = new Set<string>();
+    let inStock = false;
+    for (const v of mine) {
+      colors.add(v.color);
+      sizes.add(v.size);
+      if (v.available > 0) inStock = true;
+    }
+    return { ...p, variants: mine, colors: [...colors], sizes: [...sizes], inStock };
   });
 }
 export function productBySlug(slug: string) { return allProducts({ includeInactive: true }).find((p) => p.slug === slug); }
@@ -50,10 +67,21 @@ export function adviseSize(h: number, w: number) {
   return 'XL';
 }
 
-/** Gợi ý phối đồ: món khác nhóm còn hàng, ưu tiên cùng tông. */
+const OUTFIT_WANT: Record<string, string[]> = {
+  'Đầm': ['Phụ kiện', 'Áo'],
+  'Áo': ['Chân váy', 'Quần', 'Phụ kiện'],
+  'Chân váy': ['Áo', 'Phụ kiện'],
+  'Quần': ['Áo', 'Phụ kiện'],
+  'Phụ kiện': ['Áo', 'Đầm', 'Chân váy'],
+};
+
+/** Gợi ý phối đồ: món khác nhóm, đang bán, còn hàng. */
 export function outfitFor(p: ProductView, list: ProductView[]) {
-  const want: Record<string, string[]> = { 'Đầm': ['Phụ kiện', 'Áo'], 'Áo': ['Chân váy', 'Quần', 'Phụ kiện'], 'Chân váy': ['Áo', 'Phụ kiện'], 'Quần': ['Áo', 'Phụ kiện'], 'Phụ kiện': ['Áo', 'Đầm', 'Chân váy'] };
+  const cats = OUTFIT_WANT[p.category] || [];
   const out: ProductView[] = [];
-  for (const cat of want[p.category]) { const m = list.find((x) => x.category === cat && x.id !== p.id && x.inStock && !out.includes(x)); if (m) out.push(m); }
+  for (const cat of cats) {
+    const m = list.find((x) => x.category === cat && x.active && x.id !== p.id && x.inStock && !out.includes(x));
+    if (m) out.push(m);
+  }
   return out.slice(0, 3);
 }

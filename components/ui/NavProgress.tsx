@@ -11,7 +11,10 @@ export default function NavProgress() {
   const path = usePathname();
   const sp = useSearchParams();
   const [busy, setBusy] = useState(false);
-  useEffect(() => setBusy(false), [path, sp]);
+  // So sánh chuỗi URL (primitive) thay vì object searchParams; tắt thanh tải ngay lúc render khi URL đã đổi.
+  const url = path + '?' + sp.toString();
+  const [prevUrl, setPrevUrl] = useState(url);
+  if (prevUrl !== url) { setPrevUrl(url); setBusy(false); }
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;

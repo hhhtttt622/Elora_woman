@@ -1,5 +1,5 @@
 import { all } from '@/lib/db';
-import { listVariants, capsuleSets } from '@/lib/inventory';
+import { getVariants, capsuleSets } from '@/lib/inventory';
 import { PageHead } from '@/components/admin/Bits';
 import { Act } from '@/components/admin/Flash';
 import CapsuleBuilder from '@/components/admin/CapsuleBuilder';
@@ -11,11 +11,23 @@ export const dynamic = 'force-dynamic';
 
 export default async function Capsules({ searchParams }: { searchParams: { add?: string } }) {
   const me = await requirePage('UC-25', '/admin/kho/capsule');
-  const vs = listVariants();
-  const caps = all<any>('SELECT * FROM capsules ORDER BY id').map((c) => {
-    const skus = all<any>('SELECT sku FROM capsule_items WHERE capsule_id=?', c.id).map((r) => r.sku);
-    const comps = skus.map((s) => vs.find((v) => v.sku === s)).filter(Boolean) as typeof vs;
-    return { ...c, comps, ...capsuleSets(skus), price: comps.reduce((n, v) => n + v.price, 0) };
+  const vs = getVariants();
+  const variantMap = new Map(vs.map((v) => [v.sku, v]));
+  const rawCaps = all<any>('SELECT * FROM capsules ORDER BY id');
+  const allItems = all<any>('SELECT capsule_id, sku FROM capsule_items');
+  const skusByCapsule = new Map<number, string[]>();
+  for (const item of allItems) {
+    let list = skusByCapsule.get(item.capsule_id);
+    if (!list) {
+      list = [];
+      skusByCapsule.set(item.capsule_id, list);
+    }
+    list.push(item.sku);
+  }
+  const caps = rawCaps.map((c) => {
+    const skus = skusByCapsule.get(c.id) || [];
+    const comps = skus.map((s) => variantMap.get(s)).filter(Boolean) as typeof vs;
+    return { ...c, comps, ...capsuleSets(skus, variantMap), price: comps.reduce((n, v) => n + v.price, 0) };
   });
   const label = (v: (typeof vs)[number]) => `${v.productName} · ${v.color} · ${sizeText(v.size)}`;
   return (

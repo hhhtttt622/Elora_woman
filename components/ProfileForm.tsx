@@ -1,7 +1,11 @@
 "use client";
+import { useMemo } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { updateProfileAction, type Res } from "@/app/actions/auth";
 import { COLORS } from "@/lib/util";
+
+const SIZES = ["S", "M", "L", "XL"] as const;
+
 function Submit() {
   const { pending } = useFormStatus();
   return (
@@ -12,7 +16,7 @@ function Submit() {
 }
 export default function ProfileForm({ u }: { u: any }) {
   const [st, action] = useFormState<Res, FormData>(updateProfileAction, {});
-  const liked = String(u.liked_colors || "").split(", ");
+  const likedSet = useMemo(() => new Set(String(u.liked_colors || "").split(", ")), [u.liked_colors]);
   const fe = st.fields || {};
   return (
     <form action={action} className="card" style={{ gap: 18, maxWidth: 720 }}>
@@ -95,7 +99,7 @@ export default function ProfileForm({ u }: { u: any }) {
             Size thường mặc
           </label>
           <select id="p-size" name="size" className="fld" defaultValue={u.size}>
-            {["S", "M", "L", "XL"].map((s) => (
+            {SIZES.map((s) => (
               <option key={s}>{s}</option>
             ))}
           </select>
@@ -120,7 +124,7 @@ export default function ProfileForm({ u }: { u: any }) {
                 type="checkbox"
                 name="colors"
                 value={c}
-                defaultChecked={liked.includes(c)}
+                defaultChecked={likedSet.has(c)}
                 style={{ width: 20, height: 20, accentColor: "#6B2437" }}
               />
               {c}

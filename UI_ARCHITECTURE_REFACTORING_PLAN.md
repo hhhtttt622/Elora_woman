@@ -557,4 +557,5 @@ ConfirmDialog là lớp giao diện thêm vào; người dùng vẫn bấm đún
 | 1 | Xong | `app/styles/{tokens,base,shop,admin,ui}.css`; `components/ui/*` (Button, StatusBadge, DataTable, Tabs, FilterChips, SearchBar, Pagination, DescriptionList, StatCard, Section, Field, Steps, BaseModal, BaseDrawer, UrlDrawer, ConfirmDialog, Toast, Menu, Empty/Loading/Error/Success, NavProgress); `error.tsx`, `not-found.tsx`; `useRun`/`Act` dùng Toast + ConfirmDialog |
 | 2 | Xong | `AdminChrome`: sidebar lọc quyền + badge, off-canvas trên mobile, Header có Breadcrumb và menu người dùng (Đăng xuất ở đầu trang – UC-03) |
 | 3 | Xong, **chờ review** | Đơn hàng: chip lọc + tìm kiếm + phân trang + Drawer `?order=` + Lưu trạng thái có xác nhận (UC-17); Tổng quan mở thẳng Drawer đơn (UC-20); 3 test `tests/e2e/orders.spec.ts` |
-| 4–8 | Chưa làm | |
+| 4 | Xong | Sản phẩm (Modal Thêm/Sửa, xác nhận Ẩn/Hiện, lọc loại/hiển thị, tìm kiếm – UC-18); Khách hàng (tìm kiếm, phân trang, Drawer `?id=` hồ sơ phong cách + lịch sử mua – UC-19); Tài khoản người dùng (Modal tạo + mật khẩu tạm có Sao chép, xác nhận đổi vai trò/khóa kèm cảnh báo 3e, tìm kiếm, phân trang – UC-38); Báo cáo (UC-40); Tổng quan (chỉ số bấm được, Xem tất cả – UC-20); Đổi mật khẩu (UC-39). 8 test `tests/e2e/admin-sales.spec.ts` |
+| 5–8 | Chưa làm | |

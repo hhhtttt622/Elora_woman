@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { topDialog } from './Dialog';
 
@@ -32,6 +32,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('ui:toplayer', on);
   }, []);
 
+  const value = useMemo(() => ({ push }), [push]);
+
   const box = (
     <div className="ui-toasts" aria-live="polite">
       {items.map((t) => (
@@ -42,5 +44,5 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       ))}
     </div>
   );
-  return <C.Provider value={{ push }}>{children}{host ? createPortal(box, host) : box}</C.Provider>;
+  return <C.Provider value={value}>{children}{host ? createPortal(box, host) : box}</C.Provider>;
 }

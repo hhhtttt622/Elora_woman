@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useCallback, useContext, useTransition } from 'react';
+import { createContext, useCallback, useContext, useMemo, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { R } from '@/app/actions/admin';
 import { useToast } from '@/components/ui/Toast';
@@ -22,7 +22,8 @@ export function FlashProvider({ children }: { children: React.ReactNode }) {
     start(() => router.refresh());
     return r;
   }, [router, push]);
-  return <C.Provider value={{ run, pending }}>{children}</C.Provider>;
+  const value = useMemo(() => ({ run, pending }), [run, pending]);
+  return <C.Provider value={value}>{children}</C.Provider>;
 }
 
 /** Nút gọi server action; `confirm` mở ConfirmDialog trước khi chạy. */

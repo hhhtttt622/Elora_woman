@@ -17,7 +17,7 @@ export default async function Holds() {
     <>
       <PageHead group="Tư vấn phối đồ" title="Hàng đang giữ" note="Lệnh giữ được tạo khi stylist gửi gợi ý outfit (24 hoặc 48 giờ). Hàng đang giữ tính vào Tạm giữ nên không bán cho người khác. Hết hạn mà khách chưa chốt, hệ thống tự nhả về kho bán." />
       {admin && <div className="row"><Act action={simulateHours} args={[12]}>Giả lập trôi 12 giờ</Act><span className="note">Công cụ thử nghiệm cho admin, không thuộc đặc tả.</span></div>}
-      {!rows.length && <div className="card" style={{ background: '#F6EEEF' }}><b>Chưa có hàng nào đang được giữ</b><span className="note">Gửi gợi ý cho khách ở mục Yêu cầu tư vấn để tạo lệnh giữ.</span></div>}
+      {rows.length === 0 ? <div className="card" style={{ background: '#F6EEEF' }}><b>Chưa có hàng nào đang được giữ</b><span className="note">Gửi gợi ý cho khách ở mục Yêu cầu tư vấn để tạo lệnh giữ.</span></div> : null}
       <div className="scroll"><table className="tb" style={{ minWidth: 880 }}><caption>Đang giữ {rows.length} món</caption>
         <thead><tr><th>Khách hàng</th>{admin && <th>Stylist</th>}<th>Sản phẩm</th><th>SKU</th><th>SL</th><th>Còn lại</th><th>Thao tác</th></tr></thead>
         <tbody>{rows.map((h) => { const left = hoursLeft(h.expires_at); return (

@@ -4,6 +4,9 @@ import { ProductCard } from '@/components/Shop';
 import { CATEGORIES, COLORS, fmt } from '@/lib/util';
 export const dynamic = 'force-dynamic';
 
+const FILTER_SIZES = ['S', 'M', 'L', 'XL', 'FS'] as const;
+const MAX_PRICES = [600000, 1000000, 1500000, 2000000] as const;
+
 export default function Catalog({ searchParams }: { searchParams: Filters }) {
   const list = filterProducts(allProducts(), searchParams);
   const f = searchParams;
@@ -16,11 +19,11 @@ export default function Catalog({ searchParams }: { searchParams: Filters }) {
         <div className="fl"><label className="lbl" htmlFor="cat">Loại sản phẩm</label>
           <select id="cat" name="cat" className="fld" defaultValue={f.cat || ''}><option value="">Tất cả</option>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></div>
         <div className="fl"><label className="lbl" htmlFor="size">Kích thước</label>
-          <select id="size" name="size" className="fld" defaultValue={f.size || ''}><option value="">Tất cả</option>{['S', 'M', 'L', 'XL', 'FS'].map((c) => <option key={c} value={c}>{c === 'FS' ? 'Free size' : c}</option>)}</select></div>
+          <select id="size" name="size" className="fld" defaultValue={f.size || ''}><option value="">Tất cả</option>{FILTER_SIZES.map((c) => <option key={c} value={c}>{c === 'FS' ? 'Free size' : c}</option>)}</select></div>
         <div className="fl"><label className="lbl" htmlFor="color">Màu sắc</label>
           <select id="color" name="color" className="fld" defaultValue={f.color || ''}><option value="">Tất cả</option>{COLORS.map((c) => <option key={c}>{c}</option>)}</select></div>
         <div className="fl"><label className="lbl" htmlFor="max">Giá tối đa</label>
-          <select id="max" name="max" className="fld" defaultValue={f.max || ''}><option value="">Không giới hạn</option>{[600000, 1000000, 1500000, 2000000].map((v) => <option key={v} value={v}>Đến {fmt(v)}</option>)}</select></div>
+          <select id="max" name="max" className="fld" defaultValue={f.max || ''}><option value="">Không giới hạn</option>{MAX_PRICES.map((v) => <option key={v} value={v}>Đến {fmt(v)}</option>)}</select></div>
         <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" name="sale" value="1" defaultChecked={!!f.sale} style={{ width: 20, height: 20, accentColor: '#6B2437' }} />Chỉ hàng khuyến mãi</label>
         <button className="btn">Áp dụng</button>
         {active && <Link href="/san-pham" className="textbtn" style={{ display: 'inline-flex', alignItems: 'center' }}>Xóa bộ lọc</Link>}

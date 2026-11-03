@@ -4,13 +4,16 @@ import { useRun } from './Flash';
 import { createSku } from '@/app/actions/admin';
 import { COLORS, mkSku, sizeText } from '@/lib/util';
 
+const SIZES_ACCESSORY = ['FS'];
+const SIZES_STANDARD = ['S', 'M', 'L', 'XL'];
+
 export default function SkuForm({ products }: { products: { id: number; name: string; code: string; category: string }[] }) {
   const { run, pending } = useRun();
   const [f, setF] = useState({ pid: String(products[0]?.id || ''), color: 'Be', size: 'M', qty: '', min: '3' });
   const p = products.find((x) => String(x.id) === f.pid);
-  const sizes = p?.category === 'Phụ kiện' ? ['FS'] : ['S', 'M', 'L', 'XL'];
+  const sizes = p?.category === 'Phụ kiện' ? SIZES_ACCESSORY : SIZES_STANDARD;
   const size = sizes.includes(f.size) ? f.size : sizes[0];
-  const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value });
+  const set = (k: string) => (e: any) => setF((prev) => ({ ...prev, [k]: e.target.value }));
   const [err, setErr] = useState('');
   return (
     <section className="card"><h2 className="h2">Tạo SKU cho biến thể mới</h2>

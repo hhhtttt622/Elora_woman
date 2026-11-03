@@ -7,9 +7,9 @@ import { sizeText } from '@/lib/util';
 
 export default function QcPanel({ code, title, lines }: { code: string; title: string; lines: { size: string; qty: number }[] }) {
   const { run, pending } = useRun();
-  const [v, setV] = useState<Record<string, { recv: string; bad: string }>>(Object.fromEntries(lines.map((l) => [l.size, { recv: String(l.qty), bad: '0' }])));
+  const [v, setV] = useState<Record<string, { recv: string; bad: string }>>(() => Object.fromEntries(lines.map((l) => [l.size, { recv: String(l.qty), bad: '0' }])));
   const [err, setErr] = useState('');
-  const upd = (z: string, k: 'recv' | 'bad', val: string) => setV({ ...v, [z]: { ...v[z], [k]: val } });
+  const upd = (z: string, k: 'recv' | 'bad', val: string) => setV((prev) => ({ ...prev, [z]: { ...prev[z], [k]: val } }));
   return (
     <section className="card" style={{ background: '#F6EEEF' }}><h2 className="h2">Kiểm định khi nhận hàng: {title}</h2>
       <div className="scroll" style={{ background: '#fff' }}><table className="tb" style={{ minWidth: 640 }}>

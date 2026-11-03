@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 export type CartLine = { sku: string; productId: number; slug: string; name: string; color: string; size: string; price: number; tone: string; qty: number };
 type Ctx = { lines: CartLine[]; add: (l: Omit<CartLine, 'qty'>, qty?: number) => void; setQty: (sku: string, qty: number) => void; remove: (sku: string) => void; clear: () => void; count: number; ready: boolean };
@@ -18,6 +18,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const setQty = useCallback((sku: string, qty: number) => setLines((p) => qty <= 0 ? p.filter((x) => x.sku !== sku) : p.map((x) => x.sku === sku ? { ...x, qty: Math.min(10, qty) } : x)), []);
   const remove = useCallback((sku: string) => setLines((p) => p.filter((x) => x.sku !== sku)), []);
   const clear = useCallback(() => setLines([]), []);
-  return <C.Provider value={{ lines, add, setQty, remove, clear, count: lines.reduce((n, l) => n + l.qty, 0), ready }}>{children}</C.Provider>;
+  const count = useMemo(() => lines.reduce((n, l) => n + l.qty, 0), [lines]);
+  const value = useMemo(() => ({ lines, add, setQty, remove, clear, count, ready }), [lines, add, setQty, remove, clear, count, ready]);
+  return <C.Provider value={value}>{children}</C.Provider>;
 }
 export const useCart = () => useContext(C);

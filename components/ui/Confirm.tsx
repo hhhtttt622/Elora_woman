@@ -20,7 +20,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [opts, setOpts] = useState<ConfirmOptions | null>(null);
   const resolver = useRef<(v: boolean) => void>();
   const confirm = useCallback<Ctx>((o) => new Promise<boolean>((res) => { resolver.current = res; setOpts(o); }), []);
-  const done = (v: boolean) => { resolver.current?.(v); resolver.current = undefined; setOpts(null); };
+  const done = useCallback((v: boolean) => { resolver.current?.(v); resolver.current = undefined; setOpts(null); }, []);
   return (
     <C.Provider value={confirm}>
       {children}

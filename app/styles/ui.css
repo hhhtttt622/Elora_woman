@@ -28,8 +28,8 @@
 .ui-table td.nowrap,.ui-table th.nowrap{white-space:nowrap}
 .ui-table td.strong{font-weight:600}
 .ui-table tr.is-active td{background:var(--blush)}
-.ui-table a.ui-rowlink{font-weight:600;text-decoration:underline;text-decoration-color:var(--c-border-strong);text-underline-offset:3px}
-.ui-table a.ui-rowlink:hover{text-decoration-color:var(--c-brand);color:var(--c-brand)}
+a.ui-rowlink{font-weight:600;text-decoration:underline;text-decoration-color:var(--c-border-strong);text-underline-offset:3px}
+a.ui-rowlink:hover{text-decoration-color:var(--c-brand);color:var(--c-brand)}
 @media (max-width:820px){
   .scroll:has(.ui-table--cards){border:0;overflow:visible}
   .ui-table--cards{min-width:0!important}
@@ -146,3 +146,4 @@ dialog.ui-modal[open]{animation:ui-fade-in .15s ease-out}
 .ui-progress.on{opacity:1;animation:ui-progress 8s cubic-bezier(.1,.7,.2,1) forwards}
 @keyframes ui-progress{from{width:0}10%{width:35%}to{width:92%}}
 @media (prefers-reduced-motion:reduce){.ui-progress.on{animation:none;width:60%}}
+.badge{white-space:nowrap}
