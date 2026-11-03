@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS sessions(
   status TEXT NOT NULL DEFAULT 'active');
 CREATE TABLE IF NOT EXISTS products(
   id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL UNIQUE, code TEXT NOT NULL, name TEXT NOT NULL, category TEXT NOT NULL,
-  price INTEGER NOT NULL, sale_price INTEGER, material TEXT DEFAULT '', description TEXT DEFAULT '', tone TEXT DEFAULT '#E8DCCB',
+  price INTEGER NOT NULL, sale_price INTEGER, material TEXT DEFAULT '', description TEXT DEFAULT '', tone TEXT DEFAULT '#E8DCCB', image_url TEXT DEFAULT '',
   active INTEGER NOT NULL DEFAULT 1, featured INTEGER NOT NULL DEFAULT 0, is_new INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS variants(
   id INTEGER PRIMARY KEY AUTOINCREMENT, sku TEXT NOT NULL UNIQUE, product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -60,27 +60,28 @@ CREATE TABLE IF NOT EXISTS inventory_logs(
 
 /** Cột bổ sung ở bản 3.0, thêm vào database tạo từ bản cũ. */
 export const MIGRATIONS: [string, string, string][] = [
-  ['users', 'status', "TEXT NOT NULL DEFAULT 'active'"],
-  ['users', 'must_change_pw', 'INTEGER NOT NULL DEFAULT 0'],
-  ['orders', 'shipped_at', 'TEXT'],
-  ['orders', 'delivered_at', 'TEXT'],
-  ['consults', 'stylist_id', 'INTEGER REFERENCES users(id)'],
-  ['consults', 'hold_hours', 'INTEGER'],
-  ['consults', 'sent_at', 'TEXT'],
-  ['holds', 'created_at', 'TEXT'],
-  ['holds', 'status', "TEXT NOT NULL DEFAULT 'Đang giữ'"],
-  ['capsules', 'created_at', 'TEXT'],
-  ['purchase_orders', 'received_at', 'TEXT'],
-  ['po_lines', 'recv', 'INTEGER'],
-  ['po_lines', 'bad', 'INTEGER'],
-  ['transfers', 'received_at', 'TEXT'],
-  ['return_tickets', 'result', "TEXT DEFAULT ''"],
-  ['return_tickets', 'processed_at', 'TEXT'],
-  ['workshop_returns', 'qty', 'INTEGER NOT NULL DEFAULT 0'],
-  ['workshop_returns', 'created_at', 'TEXT'],
-  ['workshop_returns', 'returned_at', 'TEXT'],
-  ['inventory_logs', 'actor_id', 'INTEGER REFERENCES users(id)'],
-  ['inventory_logs', 'ref', "TEXT DEFAULT ''"],
+  ["products", "image_url", "TEXT DEFAULT ''"],
+  ["users", "status", "TEXT NOT NULL DEFAULT 'active'"],
+  ["users", "must_change_pw", "INTEGER NOT NULL DEFAULT 0"],
+  ["orders", "shipped_at", "TEXT"],
+  ["orders", "delivered_at", "TEXT"],
+  ["consults", "stylist_id", "INTEGER REFERENCES users(id)"],
+  ["consults", "hold_hours", "INTEGER"],
+  ["consults", "sent_at", "TEXT"],
+  ["holds", "created_at", "TEXT"],
+  ["holds", "status", "TEXT NOT NULL DEFAULT 'Đang giữ'"],
+  ["capsules", "created_at", "TEXT"],
+  ["purchase_orders", "received_at", "TEXT"],
+  ["po_lines", "recv", "INTEGER"],
+  ["po_lines", "bad", "INTEGER"],
+  ["transfers", "received_at", "TEXT"],
+  ["return_tickets", "result", "TEXT DEFAULT ''"],
+  ["return_tickets", "processed_at", "TEXT"],
+  ["workshop_returns", "qty", "INTEGER NOT NULL DEFAULT 0"],
+  ["workshop_returns", "created_at", "TEXT"],
+  ["workshop_returns", "returned_at", "TEXT"],
+  ["inventory_logs", "actor_id", "INTEGER REFERENCES users(id)"],
+  ["inventory_logs", "ref", "TEXT DEFAULT ''"],
 ];
 
 export const INDEXES = `
