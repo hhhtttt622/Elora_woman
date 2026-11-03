@@ -1,32 +1,40 @@
 'use client';
-import { createContext, useCallback, useContext, useState, useTransition } from 'react';
+import { createContext, useCallback, useContext, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { R } from '@/app/actions/admin';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm, type ConfirmOptions } from '@/components/ui/Confirm';
+import { buttonClass, type ButtonSize, type ButtonVariant } from '@/components/ui/Button';
 
 type Ctx = { run: (p: Promise<R>) => Promise<R>; pending: boolean };
 const C = createContext<Ctx>(null as any);
+/** Chạy server action → báo kết quả bằng Toast → làm mới dữ liệu trang. */
 export const useRun = () => useContext(C);
 
+/** Giữ tên cũ để các component đang dùng không phải đổi; thông báo nay hiện bằng Toast. */
 export function FlashProvider({ children }: { children: React.ReactNode }) {
-  const [flash, setFlash] = useState<{ ok: boolean; text: string } | null>(null);
+  const { push } = useToast();
   const [pending, start] = useTransition();
   const router = useRouter();
   const run = useCallback(async (p: Promise<R>) => {
     const r = await p;
-    setFlash({ ok: !r.error, text: r.error || r.msg || 'Xong.' });
+    push({ ok: !r.error, text: r.error || r.msg || 'Xong.' });
     start(() => router.refresh());
     return r;
-  }, [router]);
-  return (
-    <C.Provider value={{ run, pending }}>
-      {flash && <div className={'flash ' + (flash.ok ? 'good' : 'bad')} role={flash.ok ? 'status' : 'alert'} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span>{flash.text}</span><button onClick={() => setFlash(null)} className="textbtn" style={{ color: 'inherit', minHeight: 0 }}>Đóng</button></div>}
-      {children}
-    </C.Provider>
-  );
+  }, [router, push]);
+  return <C.Provider value={{ run, pending }}>{children}</C.Provider>;
 }
 
-/** Nút gọi server action. */
-export function Act({ action, args = [], children, primary, confirm: ask, label, disabled }: { action: (...a: any[]) => Promise<R>; args?: any[]; children: React.ReactNode; primary?: boolean; confirm?: string; label?: string; disabled?: boolean }) {
+/** Nút gọi server action; `confirm` mở ConfirmDialog trước khi chạy. */
+export function Act({ action, args = [], children, primary, confirm: ask, label, disabled, variant, size }: {
+  action: (...a: any[]) => Promise<R>; args?: any[]; children: React.ReactNode; primary?: boolean;
+  confirm?: string | ConfirmOptions; label?: string; disabled?: boolean; variant?: ButtonVariant; size?: ButtonSize;
+}) {
   const { run, pending } = useRun();
-  return <button type="button" className={primary ? 'btn' : 'ghost'} aria-label={label} disabled={pending || disabled} onClick={() => { if (ask && !window.confirm(ask)) return; run(action(...args)); }}>{children}</button>;
+  const confirm = useConfirm();
+  const onClick = async () => {
+    if (ask && !(await confirm(typeof ask === 'string' ? { title: ask } : ask))) return;
+    run(action(...args));
+  };
+  return <button type="button" className={buttonClass(variant ?? (primary ? 'primary' : 'secondary'), size)} aria-label={label} disabled={pending || disabled} onClick={onClick}>{children}</button>;
 }

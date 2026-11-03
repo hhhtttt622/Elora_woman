@@ -1,0 +1,148 @@
+/* Design System dùng chung (components/ui). Tiền tố ui- để không đụng class cũ. */
+
+/* ---------- Button ---------- */
+.btn.ui-danger{background:var(--c-danger)}
+.btn.ui-danger:hover{background:#7E1124}
+.ghost.ui-danger{border-color:var(--c-danger);color:var(--c-danger)}
+.ghost.ui-danger:hover{background:var(--c-danger);color:#fff}
+.ui-sm{min-height:var(--h-sm)!important;padding:0 12px!important;font-size:11px!important}
+.ui-md{min-height:var(--h-md)!important}
+.ui-lg{min-height:var(--h-lg)!important}
+.ui-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:1px solid transparent;background:transparent;color:inherit;cursor:pointer;font-size:20px;line-height:1}
+.ui-icon-btn:hover{border-color:var(--c-border-strong)}
+
+/* ---------- Page ---------- */
+.ui-page{display:flex;flex-direction:column;gap:var(--sp-6);min-width:0}
+.ui-page.narrow{max-width:720px}
+.ui-ph{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:var(--sp-3) var(--sp-6)}
+.ui-ph-text{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ui-ph-title{font-family:var(--font-display);font-weight:500;font-size:clamp(30px,3vw,40px);line-height:1.05}
+.ui-ph-desc{max-width:560px}
+.ui-ph-actions{display:flex;flex-wrap:wrap;gap:var(--sp-3);align-items:center}
+.ui-toolbar{display:flex;flex-wrap:wrap;gap:var(--sp-3);align-items:flex-end;justify-content:space-between}
+.ui-chips{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.ui-search{display:flex;gap:var(--sp-2);align-items:flex-end;flex:1 1 280px;max-width:460px}
+.ui-search .fl{flex:1}
+
+/* ---------- Table ---------- */
+.ui-table td.nowrap,.ui-table th.nowrap{white-space:nowrap}
+.ui-table td.strong{font-weight:600}
+.ui-table tr.is-active td{background:var(--blush)}
+.ui-table a.ui-rowlink{font-weight:600;text-decoration:underline;text-decoration-color:var(--c-border-strong);text-underline-offset:3px}
+.ui-table a.ui-rowlink:hover{text-decoration-color:var(--c-brand);color:var(--c-brand)}
+@media (max-width:820px){
+  .scroll:has(.ui-table--cards){border:0;overflow:visible}
+  .ui-table--cards{min-width:0!important}
+  .ui-table--cards caption{padding:0 0 12px}
+  .ui-table--cards thead{display:none}
+  .ui-table--cards tbody tr{display:block;border:1px solid var(--c-border);margin-bottom:12px;background:#fff}
+  .ui-table--cards tbody td{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:right;white-space:normal!important}
+  .ui-table--cards tbody td::before{content:attr(data-label);flex:none;text-align:left;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-text-muted)}
+  .ui-table--cards tbody td[data-label=""]::before{display:none}
+  .ui-table--cards tbody tr:hover td{background:transparent}
+}
+.ui-pager{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:var(--sp-3);font-size:var(--fs-md)}
+.ui-pager nav{display:flex;gap:6px;flex-wrap:wrap}
+.ui-pager a,.ui-pager span.cur{display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:40px;padding:0 10px;border:1px solid var(--c-border-strong);background:#fff;font-weight:600}
+.ui-pager a:hover{border-color:var(--ink)}
+.ui-pager span.cur{background:var(--ink);border-color:var(--ink);color:#fff}
+.ui-pager span.dis{opacity:.4;pointer-events:none}
+
+/* ---------- Tabs ---------- */
+.ui-tabs{display:flex;border-bottom:1px solid var(--c-border);overflow-x:auto;scrollbar-width:none}
+.ui-tabs::-webkit-scrollbar{display:none}
+.ui-tab{display:inline-flex;align-items:center;gap:8px;min-height:46px;padding:0 18px;margin-bottom:-1px;border-bottom:2px solid transparent;font-size:var(--fs-md);font-weight:600;white-space:nowrap;color:var(--c-text-muted)}
+.ui-tab:hover{color:var(--ink)}
+.ui-tab[aria-current]{color:var(--ink);border-bottom-color:var(--c-brand)}
+.ui-tab .bd{min-width:22px;height:22px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;background:var(--c-warning-bg);color:var(--c-warning-text);font-size:12px}
+
+/* ---------- Description list ---------- */
+.ui-dl{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--dl-min,170px),1fr));gap:14px 24px;font-size:var(--fs-md)}
+.ui-dl dt{font-weight:600}
+.ui-dl dd{margin:2px 0 0;overflow-wrap:anywhere}
+
+/* ---------- Section card ---------- */
+.ui-section{border:1px solid var(--c-border);background:#fff;display:flex;flex-direction:column;gap:14px;padding:20px;min-width:0}
+.ui-section-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px}
+
+/* ---------- Dialog: Modal & Drawer ---------- */
+dialog.ui-dialog{padding:0;border:0;background:#fff;color:var(--ink);box-shadow:var(--shadow-3);max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);overflow:hidden}
+dialog.ui-dialog::backdrop{background:var(--c-backdrop)}
+dialog.ui-dialog[open]{display:flex;flex-direction:column}
+.ui-modal{width:560px}
+.ui-modal.sm{width:440px}
+.ui-modal.lg{width:880px}
+.ui-dialog-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 24px;border-bottom:1px solid var(--c-border);flex:none}
+.ui-dialog-title{font-family:var(--font-display);font-weight:500;font-size:var(--fs-2xl);line-height:1.1}
+.ui-dialog-body{padding:24px;overflow:auto;display:flex;flex-direction:column;gap:18px;flex:1 1 auto;min-height:0}
+.ui-dialog-foot{padding:14px 24px;border-top:1px solid var(--c-border);display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;flex:none;background:var(--c-surface-admin)}
+dialog.ui-drawer{margin:0 0 0 auto;width:560px;height:100dvh;max-height:100dvh;max-width:100vw}
+dialog.ui-drawer.lg{width:720px}
+dialog.ui-drawer.left{margin:0 auto 0 0}
+dialog.ui-drawer[open]{animation:ui-slide-in .2s ease-out}
+dialog.ui-drawer.left[open]{animation-name:ui-slide-in-left}
+dialog.ui-modal[open]{animation:ui-fade-in .15s ease-out}
+@keyframes ui-slide-in{from{transform:translateX(24px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes ui-slide-in-left{from{transform:translateX(-24px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes ui-fade-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (max-width:820px){
+  dialog.ui-modal,dialog.ui-modal.sm,dialog.ui-modal.lg{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0}
+  dialog.ui-modal.sm{height:auto;margin:auto 0 0}
+  dialog.ui-drawer,dialog.ui-drawer.lg{width:100vw}
+  .ui-dialog-head,.ui-dialog-body,.ui-dialog-foot{padding-left:16px;padding-right:16px}
+}
+
+/* ---------- Toast ---------- */
+.ui-toasts{position:fixed;right:16px;bottom:16px;z-index:var(--z-toast);display:flex;flex-direction:column;gap:8px;width:min(420px,calc(100vw - 32px));pointer-events:none}
+.ui-toast{pointer-events:auto;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px 16px;font-size:var(--fs-md);font-weight:600;border:1px solid var(--c-border-strong);box-shadow:var(--shadow-2);animation:ui-fade-in .15s ease-out}
+.ui-toast.good{background:var(--c-success-bg);color:var(--c-success-text)}
+.ui-toast.bad{background:var(--c-danger);color:#fff;border-color:var(--c-danger)}
+.ui-toast button{flex:none;min-height:0;color:inherit}
+
+/* ---------- States ---------- */
+.ui-empty{background:var(--c-surface-alt);border:1px solid var(--c-border);padding:20px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.ui-empty b{font-size:var(--fs-base)}
+.ui-error{border:1px solid var(--c-danger);background:#fff;padding:24px;display:flex;flex-direction:column;gap:12px;align-items:flex-start;max-width:640px}
+.ui-success{display:flex;flex-direction:column;gap:18px;max-width:640px}
+.ui-skel{display:block;background:linear-gradient(90deg,#F1EBED 25%,#F8F4F5 50%,#F1EBED 75%);background-size:200% 100%;animation:ui-shimmer 1.2s linear infinite}
+@keyframes ui-shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+.ui-loading{display:flex;flex-direction:column;gap:20px}
+.ui-steps{margin:0;padding:0;list-style:none;display:flex;flex-direction:column}
+.ui-steps li{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--c-border);font-size:var(--fs-md);color:#6A6168}
+.ui-steps li.done{color:var(--ink);font-weight:600}
+.ui-steps li .badge{min-width:28px;text-align:center}
+.ui-callout{background:var(--c-surface-alt);border:1px solid var(--c-border);padding:12px 14px;font-size:var(--fs-md)}
+
+/* ---------- Menu (dropdown) ---------- */
+.ui-menu{position:relative}
+.ui-menu>summary{list-style:none;cursor:pointer}
+.ui-menu>summary::-webkit-details-marker{display:none}
+.ui-menu-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:var(--z-header);min-width:240px;background:#fff;border:1px solid var(--c-border);box-shadow:var(--shadow-2);padding:8px 0;display:flex;flex-direction:column}
+.ui-menu-panel a,.ui-menu-panel button{display:flex;align-items:center;width:100%;min-height:40px;padding:0 16px;border:0;background:transparent;font:500 14px var(--font-sans);color:var(--ink);text-align:left;cursor:pointer}
+.ui-menu-panel a:hover,.ui-menu-panel button:hover{background:var(--c-surface-alt)}
+.ui-menu-panel hr{border:0;border-top:1px solid var(--c-border);margin:6px 0}
+.ui-menu-info{padding:8px 16px 10px;font-size:13px;color:var(--c-text-muted);display:flex;flex-direction:column;gap:2px}
+.ui-menu-info b{color:var(--ink);font-size:14px}
+
+/* ---------- Print: chỉ in khối .ui-print ---------- */
+@media print{
+  body *{visibility:hidden!important}
+  .ui-print,.ui-print *{visibility:visible!important}
+  .ui-print{position:fixed;left:0;top:0}
+  dialog.ui-dialog{box-shadow:none}
+}
+@media (prefers-reduced-motion:reduce){
+  dialog.ui-dialog[open],.ui-toast{animation:none}
+  .ui-skel{animation:none}
+}
+.ui-kpi-link{transition:border-color .15s}.ui-kpi-link:hover{border-color:var(--ink);border-top-color:var(--wine)}.ui-kpi-link:hover b{text-decoration:underline}
+@media (max-width:820px){
+  .ui-chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;max-width:100%}
+  .ui-chips::-webkit-scrollbar{display:none}
+  .ui-search{max-width:none}
+}
+/* ---------- Thanh tiến trình điều hướng ---------- */
+.ui-progress{position:fixed;left:0;top:0;height:3px;width:0;background:var(--c-brand);z-index:var(--z-toast);opacity:0;pointer-events:none}
+.ui-progress.on{opacity:1;animation:ui-progress 8s cubic-bezier(.1,.7,.2,1) forwards}
+@keyframes ui-progress{from{width:0}10%{width:35%}to{width:92%}}
+@media (prefers-reduced-motion:reduce){.ui-progress.on{animation:none;width:60%}}

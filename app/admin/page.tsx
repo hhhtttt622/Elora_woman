@@ -40,7 +40,7 @@ export default async function Overview() {
         {sales && <>
           <section className="card" style={card}><h2 className="h2">Đơn chờ xác nhận</h2>
             {!pending.length && <span className="note">Không có đơn nào đang chờ.</span>}
-            <ul className="list">{pending.slice(0, 5).map((o) => <li key={o.id}><span><Link href={`/admin/don-hang?s=0`}><b>{o.code}</b></Link> · {o.uname}<br /><span className="note">{fmt(o.total)} · {o.pay_method}</span></span><Act action={setOrderStatus} args={[o.code, 1]}>Xác nhận</Act></li>)}</ul></section>
+            <ul className="list">{pending.slice(0, 5).map((o) => <li key={o.id}><span><Link href={`/admin/don-hang?s=0&order=${o.code}`}><b>{o.code}</b></Link> · {o.uname}<br /><span className="note">{fmt(o.total)} · {o.pay_method}</span></span><Act action={setOrderStatus} args={[o.code, 1]}>Xác nhận</Act></li>)}</ul></section>
           <section className="card" style={card}><h2 className="h2">Đơn chờ xuất kho</h2>
             {!toPack.length && <span className="note">Không có đơn nào chờ đóng gói.</span>}
             <ul className="list">{toPack.slice(0, 5).map((o) => <li key={o.id}><span><b>{o.code}</b> · {o.uname}</span><Link href={`/admin/kho/xuat-kho?o=${o.code}`} className="ghost">Xuất kho</Link></li>)}</ul></section>

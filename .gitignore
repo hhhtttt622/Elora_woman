@@ -5,3 +5,8 @@ prisma/dev.db*
 data/
 *.db
 *.db-*
+tests/.auth
+tests/baseline
+test-results
+playwright-report
+tsconfig.tsbuildinfo

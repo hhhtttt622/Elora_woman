@@ -1,0 +1,54 @@
+html{scroll-behavior:smooth}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:#fff;color:var(--ink);font-family:'Be Vietnam Pro',system-ui,sans-serif;font-size:15px;line-height:1.5}
+a{color:inherit;text-decoration:none}
+h1,h2,h3,p{margin:0}
+button{font-family:inherit}
+.disp{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500}
+.eb{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--wine)}
+.lbl{font-size:14px;font-weight:600}
+.err{font-size:13px;font-weight:500;color:var(--err)}
+.ok{font-size:14px;font-weight:600;color:var(--wine)}
+.note{font-size:13px;line-height:1.55;color:var(--mute)}
+.wrap{max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,64px)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 24px;border:0;background:var(--wine);color:#fff;font:600 13px 'Be Vietnam Pro',system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.btn:hover{background:var(--wine-d)}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.ghost{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 16px;border:1px solid var(--ink);background:#fff;color:var(--ink);font:600 12px 'Be Vietnam Pro',system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.ghost:hover{background:var(--ink);color:#fff}
+.ghost:disabled{opacity:.6;cursor:not-allowed}
+.textbtn{padding:0;min-height:40px;border:0;background:transparent;color:var(--wine);font:600 13px 'Be Vietnam Pro',system-ui,sans-serif;text-decoration:underline;cursor:pointer}
+.fld{width:100%;min-height:44px;padding:0 12px;border:1px solid var(--line-2);background:#fff;color:var(--ink);font:400 14px 'Be Vietnam Pro',system-ui,sans-serif;border-radius:0}
+.fld::placeholder{color:#6A6168}
+textarea.fld{padding:10px 12px;min-height:110px;resize:vertical}
+.fld:hover{border-color:var(--ink)}
+.fld[aria-invalid=true]{border-color:var(--err)}
+.fl{display:flex;flex-direction:column;gap:8px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.card{border:1px solid var(--line);padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0;background:#fff}
+.h2{font-size:14px;font-weight:600;letter-spacing:.14em;text-transform:uppercase}
+.scroll{overflow-x:auto;border:1px solid var(--line)}
+.scroll.tall{max-height:72vh;overflow:auto}
+.tb{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+.tb caption{text-align:left;padding:12px 14px;font-weight:600;background:#fff;color:var(--ink)}
+.tb th{position:sticky;top:0;z-index:1;background:var(--head);color:var(--ink);text-align:left;padding:10px 14px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;border-bottom:1px solid var(--line-2)}
+.tb td{padding:10px 14px;color:var(--ink);border-bottom:1px solid var(--line);vertical-align:middle}
+.tb tbody tr:hover td{background:var(--blush)}
+.tb tr.grp td{background:var(--sand)!important;font-weight:600}
+.tb .num{text-align:right}
+.tb .ghost,.tb .btn{min-height:32px;padding:0 12px;font-size:11px}
+.tb .fld{min-height:36px}
+.chip{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;font:500 13px/1 'Be Vietnam Pro',system-ui,sans-serif;white-space:nowrap;cursor:pointer;border:1px solid var(--line-2);background:#fff;color:var(--ink)}
+.chip:hover{border-color:var(--ink)}
+.chip[aria-pressed=true],.chip.on{background:var(--wine);border-color:var(--wine);color:#fff}
+.badge{display:inline-block;padding:4px 10px;font-size:12px;font-weight:600;background:var(--sage);color:var(--ink)}
+.badge.dark{background:var(--ink);color:#fff}.badge.red{background:var(--err);color:#fff}.badge.pink{background:#F3DCE1;color:var(--wine-d)}.badge.sand{background:var(--sand);color:var(--ink)}
+.kpi{display:flex;flex-direction:column;gap:6px;padding:18px 20px;border:1px solid var(--line);border-top:3px solid var(--wine);min-width:0;background:#fff}
+.kpi .lbl{font-size:13px;color:var(--mute);font-weight:500}
+.kpi b{font-weight:600;font-size:clamp(22px,2vw,30px);white-space:nowrap;line-height:1.1;color:var(--ink);font-variant-numeric:lining-nums tabular-nums;letter-spacing:-.01em}
+.list{margin:0;padding:0;list-style:none}
+.list li{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 12px;padding:12px 0;border-top:1px solid var(--line);font-size:14px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--wine);outline-offset:3px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
