@@ -24,7 +24,7 @@ export default async function Page({ searchParams }: { searchParams: SP }) {
       if (v.available < v.minStock) warn = true;
     }
     return {
-      id: p.id, name: p.name, category: p.category, price: p.price, salePrice: p.salePrice, material: p.material, description: p.description, active: p.active, featured: p.featured, isNew: p.isNew,
+      id: p.id, name: p.name, category: p.category, price: p.price, salePrice: p.salePrice, material: p.material, description: p.description, image: p.image, active: p.active, featured: p.featured, isNew: p.isNew,
       stockText: p.variants.length ? `${physical} (${p.variants.length} SKU)` : 'Chưa có SKU', warn,
     };
   });

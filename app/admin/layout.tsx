@@ -9,7 +9,11 @@ import { FlashProvider } from '@/components/admin/Flash';
 import AdminChrome from '@/components/layout/AdminChrome';
 export const dynamic = 'force-dynamic';
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const u = await getUser();
   if (!u) redirect('/dang-nhap?next=/admin');
   if (!isInternal(u.role)) redirect('/tai-khoan');
@@ -34,9 +38,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     '/admin/kho/dat-may': counts.c_pos || 0,
     '/admin/kho/dieu-chuyen': counts.c_transfers || 0,
     '/admin/kho/giu-hang': counts.c_holds || 0,
-    '/admin/kho/xuat-kho': (counts.c_orders_pack || 0) + (counts.c_returns || 0),
+    '/admin/don-hang/xuat-kho': counts.c_orders_pack || 0,
+    '/admin/don-hang/doi-tra': counts.c_returns || 0,
   };
-  const nav = ADMIN_NAV.map((g) => ({ group: g.group, items: g.items.filter(([, , uc]) => can(u.role, uc)).map(([h, l]) => [h, l] as [string, string]) })).filter((g) => g.items.length);
+  const nav = ADMIN_NAV.map((g) => ({
+    group: g.group,
+    items: g.items
+      .filter(([, , uc]) => can(u.role, uc))
+      .map(([h, l]) => [h, l] as [string, string]),
+  })).filter((g) => g.items.length);
   return (
     <AdminChrome nav={nav} badges={badges} user={{ name: u.name, email: u.email, roleLabel: ROLE_LABEL[u.role] }}>
       <FlashProvider>{children}</FlashProvider>

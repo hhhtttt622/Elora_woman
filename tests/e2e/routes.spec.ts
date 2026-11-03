@@ -75,7 +75,8 @@ test.describe('Liên kết sâu nội bộ (mục 2.4)', () => {
       [`/admin/kho/dieu-chuyen?sku=${sku}&from=showroom&to=online`, /Tạo phiếu điều chuyển/],
       [`/admin/kho/capsule?add=${sku}`, /Tạo capsule mới/],
       [custHref!, /Hồ sơ phong cách/],
-      ['/admin/kho/xuat-kho', /Xuất kho bán hàng/],
+      ['/admin/don-hang/xuat-kho', /Danh sách nhặt hàng|Chưa có đơn nào chờ nhặt hàng/],
+      ['/admin/don-hang/doi-tra', /Tiếp nhận hàng đổi trả/],
       ['/admin/kho/nhat-ky?idle=60', /Báo cáo hàng chậm luân chuyển/],
     ];
     for (const [href, text] of links) {

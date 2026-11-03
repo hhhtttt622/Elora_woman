@@ -14,14 +14,18 @@ const WS_RE = /\s+/;
 
 const isOn = (path: string, href: string) => path === href || (href !== '/admin' && path.startsWith(href + '/'));
 
-function crumbsOf(path: string, nav: Nav) {
-  // Mục menu khớp dài nhất: một lượt duyệt, không cần flatMap + filter + sort.
+/** Mục menu khớp dài nhất với đường dẫn (vd. /admin/don-hang/xuat-kho thắng /admin/don-hang). */
+function activeItem(path: string, nav: Nav) {
   let hit: { href: string; label: string; group: string } | null = null;
   for (const g of nav) {
     for (const [href, label] of g.items) {
       if (isOn(path, href) && (!hit || href.length > hit.href.length)) hit = { href, label, group: g.group };
     }
   }
+  return hit;
+}
+
+function crumbsOf(path: string, hit: ReturnType<typeof activeItem>) {
   if (!hit) return [{ label: 'Quản trị', href: '/admin' }];
   const out: { label: string; href?: string }[] = [{ label: hit.group }, { label: hit.label, href: path === hit.href ? undefined : hit.href }];
   path.slice(hit.href.length).split('/').filter(Boolean).forEach((s) => out.push({ label: SEGMENT_LABEL[s] || decodeURIComponent(s) }));
@@ -52,7 +56,8 @@ export default function AdminChrome({ nav, badges, user, children }: { nav: Nav;
     document.addEventListener('keydown', k);
     return () => document.removeEventListener('keydown', k);
   }, [open]);
-  const crumbs = useMemo(() => crumbsOf(path, nav), [path, nav]);
+  const active = useMemo(() => activeItem(path, nav), [path, nav]);
+  const crumbs = useMemo(() => crumbsOf(path, active), [path, active]);
   const initials = useMemo(() => user.name.split(WS_RE).slice(-2).map((w) => w[0]).join('').toUpperCase(), [user.name]);
   const hidden = mobile && !open;
 
@@ -65,7 +70,7 @@ export default function AdminChrome({ nav, badges, user, children }: { nav: Nav;
         </div>
         <nav id="admin-nav" aria-label="Menu quản trị" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {nav.map((g) => [<span key={g.group} className="nh">{g.group}</span>, ...g.items.map(([href, label]) => {
-            const on = isOn(path, href);
+            const on = href === active?.href;
             return <Link key={href} href={href} className={'sn' + (on ? ' on' : '')} aria-current={on ? 'page' : undefined}>{label}{badges[href] > 0 && <span className="bd" aria-label={`${badges[href]} việc đang chờ`}>{badges[href]}</span>}</Link>;
           })])}
         </nav>

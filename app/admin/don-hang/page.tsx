@@ -46,7 +46,7 @@ export default async function Orders({ searchParams }: { searchParams: SP }) {
 
   return (
     <PageContainer>
-      <PageHeader eyebrow="Bán hàng" title="Đơn hàng" description='Đơn chỉ chuyển sang "Đang giao" khi đóng gói ở mục Xuất kho và đổi trả, để kho được trừ đúng.' />
+      <PageHeader eyebrow="Bán hàng" title="Đơn hàng" description='Đơn chỉ chuyển sang "Đang giao" khi đóng gói ở mục Xuất kho, để kho được trừ đúng.' />
 
       <div className="ui-toolbar">
         <FilterChips label="Lọc theo trạng thái" current={String(f)} items={[-1, 0, 1, 2, 3].map((k) => ({
@@ -80,7 +80,7 @@ export default async function Orders({ searchParams }: { searchParams: SP }) {
           <Section title="Trạng thái">
             <Steps steps={ORDER_STATUS} current={sel.status} />
             <OrderStatusForm code={sel.code} status={sel.status} />
-            {sel.status === 1 && <p className="note">Để chuyển sang Đang giao, đóng gói đơn ở <Link className="textbtn" style={{ minHeight: 0 }} href={`/admin/kho/xuat-kho?o=${sel.code}`}>Xuất kho</Link>.</p>}
+            {sel.status === 1 && <p className="note">Để chuyển sang Đang giao, đóng gói đơn ở <Link className="textbtn" style={{ minHeight: 0 }} href={`/admin/don-hang/xuat-kho?o=${sel.code}`}>Xuất kho</Link>.</p>}
           </Section>
           <Section title="Sản phẩm">
             <ul className="list">
