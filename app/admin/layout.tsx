@@ -22,7 +22,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     '/admin/kho/dat-may': c('SELECT COUNT(*) c FROM purchase_orders WHERE status=2'),
     '/admin/kho/dieu-chuyen': c("SELECT COUNT(*) c FROM transfers WHERE status='Đang chuyển'"),
     '/admin/kho/giu-hang': c('SELECT COUNT(*) c FROM holds'),
-    '/admin/kho/xuat-kho': c('SELECT COUNT(*) c FROM orders WHERE status=1') + c("SELECT COUNT(*) c FROM return_tickets WHERE status='Chờ kiểm tra'"),
+    '/admin/kho/xuat-kho': c('SELECT COUNT(*) c FROM orders WHERE status=1'),
+    '/admin/kho/doi-tra': c("SELECT COUNT(*) c FROM return_tickets WHERE status IN ('Chờ nhận hàng','Chờ kiểm tra')"),
   };
   return (
     <div className="adm">
