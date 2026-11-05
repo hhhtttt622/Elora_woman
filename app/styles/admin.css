@@ -1,12 +1,23 @@
 /* quản trị – Application Shell */
 .adm{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh;background:var(--c-surface-admin)}
-.side{background:var(--ink);color:#fff;padding:24px 16px;display:flex;flex-direction:column;gap:20px;position:sticky;top:0;height:100vh;overflow-y:auto;z-index:var(--z-sidebar)}
-.side-brand{padding:0 14px;display:flex;flex-direction:column;gap:6px}
-.side-role{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--on-dark-accent)}
-.side a.sn{display:flex;align-items:center;gap:10px;width:100%;min-height:42px;padding:0 14px;border:0;background:transparent;color:#fff;font:500 14px var(--font-sans);text-align:left}
-.side .sn:hover{background:var(--ink-2)}.side .sn.on{background:var(--wine)}
-.side .nh{display:block;padding:16px 14px 6px;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--on-dark-accent)}
-.side .bd{margin-left:auto;min-width:22px;height:22px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;background:#fff;color:var(--wine);font-size:12px;font-weight:600}
+/* Sidebar như lớp lót áo: nền rượu đậm; mục đang chọn là nhãn may nối liền vào vùng nội dung. */
+.side{background:var(--wine-d);color:#fff;padding:28px 0 0;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh;z-index:var(--z-sidebar)}
+.side-brand{padding:0 26px;display:flex;flex-direction:column;gap:8px}
+.side-role{font-size:13px;color:var(--on-dark-accent)}
+/* Không hiện thanh cuộn để nhãn đang chọn chạm sát mép; hai mép mờ báo còn mục ở trên, dưới.
+   scroll-padding giữ mục đang chọn ra khỏi phần mờ. */
+.side-nav{--fade:linear-gradient(to bottom,transparent,#000 14px,#000 calc(100% - 28px),transparent);flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding:14px 0 32px 12px;scroll-padding:20px 0 40px;scrollbar-width:none;-webkit-mask-image:var(--fade);mask-image:var(--fade)}
+.side-nav::-webkit-scrollbar{display:none}
+.side a.sn{position:relative;flex:none;display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:0 16px 0 14px;border:0;background:transparent;color:var(--on-dark);font:500 14px var(--font-sans);text-align:left;transition:background-color .15s,color .15s}
+.side a.sn:hover{background:var(--wine);color:#fff}
+.side a.sn.on{background:var(--c-surface-admin);color:var(--wine-d);font-weight:600}
+.side a.sn.on::before{content:'';position:absolute;left:6px;top:7px;bottom:7px;border-left:1px dashed var(--wine)}
+.side a:focus-visible{outline-color:var(--on-dark-accent);outline-offset:-3px}
+.side a.sn.on:focus-visible{outline-color:var(--wine)}
+.side .nh{flex:none;display:block;padding:18px 14px 6px;font:italic 500 18px/1.2 var(--font-display);color:var(--on-dark-accent)}
+.side .nh:first-child{padding-top:0}
+.side .bd{margin-left:auto;min-width:22px;height:22px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;background:var(--pink);color:var(--wine-d);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.side a.sn.on .bd{background:var(--wine);color:#fff}
 .side-backdrop{position:fixed;inset:0;background:var(--c-backdrop);z-index:calc(var(--z-sidebar) - 1)}
 .acol{display:flex;flex-direction:column;min-width:0}
 .ahead{position:sticky;top:0;z-index:var(--z-header);display:flex;align-items:center;gap:12px;min-height:60px;padding:0 clamp(16px,3vw,40px);background:#fff;border-bottom:1px solid var(--c-border)}
@@ -44,4 +55,4 @@
   .kpi{padding:14px}
   .kpi b{font-size:20px}
 }
-@media (prefers-reduced-motion:reduce){.side{transition:none}}
+@media (prefers-reduced-motion:reduce){.side,.side a.sn{transition:none}}

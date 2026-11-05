@@ -41,6 +41,7 @@ export default function AdminChrome({ nav, badges, user, children }: { nav: Nav;
   const [open, setOpen] = useState(false);
   const [mobile, setMobile] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
+  const navRef = useRef<HTMLElement>(null);
   // Đổi trang thì đóng menu off-canvas ngay trong lúc render (không cần effect + render lại).
   const [prevPath, setPrevPath] = useState(path);
   if (prevPath !== path) { setPrevPath(path); setOpen(false); }
@@ -58,6 +59,9 @@ export default function AdminChrome({ nav, badges, user, children }: { nav: Nav;
   }, [open]);
   const active = useMemo(() => activeItem(path, nav), [path, nav]);
   const crumbs = useMemo(() => crumbsOf(path, active), [path, active]);
+  // Menu dài hơn màn hình: luôn đưa mục đang chọn vào vùng nhìn thấy.
+  const activeHref = active?.href;
+  useEffect(() => { navRef.current?.querySelector('.sn.on')?.scrollIntoView({ block: 'nearest' }); }, [activeHref]);
   const initials = useMemo(() => user.name.split(WS_RE).slice(-2).map((w) => w[0]).join('').toUpperCase(), [user.name]);
   const hidden = mobile && !open;
 
@@ -66,9 +70,9 @@ export default function AdminChrome({ nav, badges, user, children }: { nav: Nav;
       <aside id="admin-side" className="side" data-open={open} aria-label="Điều hướng quản trị" {...(hidden ? { inert: '' as any, 'aria-hidden': true } : {})}>
         <div className="side-brand">
           <Link href="/admin" className="logo" style={{ color: '#fff', fontSize: 26 }}>ELORA <i style={{ color: 'var(--on-dark-accent)' }}>woman</i></Link>
-          <span className="side-role">Quản trị · {user.roleLabel}</span>
+          <span className="side-role">Vai trò: {user.roleLabel}</span>
         </div>
-        <nav id="admin-nav" aria-label="Menu quản trị" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <nav ref={navRef} id="admin-nav" className="side-nav" aria-label="Menu quản trị">
           {nav.map((g) => [<span key={g.group} className="nh">{g.group}</span>, ...g.items.map(([href, label]) => {
             const on = href === active?.href;
             return <Link key={href} href={href} className={'sn' + (on ? ' on' : '')} aria-current={on ? 'page' : undefined}>{label}{badges[href] > 0 && <span className="bd" aria-label={`${badges[href]} việc đang chờ`}>{badges[href]}</span>}</Link>;

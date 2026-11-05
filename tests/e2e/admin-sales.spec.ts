@@ -29,6 +29,62 @@ test.describe('admin', () => {
     await expect(page.locator('table.ui-table tbody tr').first()).toContainText('Đang bán');
   });
 
+  test('UC-33, UC-34: Modal tiếp nhận, xác nhận xử lý phiếu, lọc và tab Kho sửa chữa', async ({ page }) => {
+    await page.goto('/admin/don-hang/doi-tra');
+    await page.getByRole('button', { name: 'Tạo phiếu đổi trả' }).click();
+    const modal = page.getByRole('dialog');
+    await expect(modal).toContainText('Tiếp nhận hàng đổi trả');
+    await modal.getByRole('button', { name: 'Hủy' }).click();
+    await expect(modal).toBeHidden();
+
+    // Hủy trên hộp xác nhận thì phiếu vẫn chờ xử lý
+    const repair = page.getByRole('button', { name: /^Chuyển sửa chữa / }).first();
+    if (await repair.count()) {
+      await repair.click();
+      await expect(modal).toContainText('kho sửa chữa');
+      await modal.getByRole('button', { name: 'Hủy' }).click();
+      await expect(repair).toBeVisible();
+    }
+
+    await page.getByRole('link', { name: /^Chờ kiểm tra/ }).click();
+    await expect(page).toHaveURL(/s=wait/);
+    await page.goto('/admin/don-hang/doi-tra?q=khong-co-phieu-nay');
+    await expect(page.locator('main')).toContainText('Không có phiếu phù hợp');
+
+    await page.getByRole('link', { name: /^Kho sửa chữa/ }).click();
+    await expect(page).toHaveURL(/tab=repair/);
+    await expect(page.getByRole('button', { name: 'Tạo phiếu đổi trả' })).toHaveCount(0);
+  });
+
+  test('UC-22: tồn kho phân trang 10 SKU, tìm kiếm và bộ lọc giữ nhau trên URL', async ({ page }) => {
+    const skuRows = page.locator('table.tb tbody tr:not(.grp)');
+    await page.goto('/admin/kho');
+    await expect(skuRows).toHaveCount(10);
+    const first = await skuRows.first().locator('td b').first().textContent();
+
+    await page.getByRole('link', { name: '2', exact: true }).click();
+    await expect(page).toHaveURL(/page=2/);
+    await expect(skuRows.first()).not.toContainText(first!);
+
+    // Xem tem giữ nguyên trang đang xem
+    await page.getByRole('link', { name: /^Xem tem / }).first().click();
+    await expect(page).toHaveURL(/page=2.*tem=|tem=.*page=2/);
+    await expect(page.locator('main')).toContainText('Tem mác và mã vạch');
+
+    // Tìm kiếm quay về trang 1
+    await page.locator('#sq').fill('BLZ');
+    await page.locator('#sq').press('Enter');
+    await expect(page).toHaveURL(/q=BLZ/);
+    await expect(page).not.toHaveURL(/page=/);
+    await expect(skuRows.first()).toContainText('BLZ');
+
+    await page.getByRole('link', { name: 'Dưới ngưỡng' }).click();
+    await expect(page).toHaveURL(/q=BLZ.*f=alert|f=alert.*q=BLZ/);
+
+    await page.goto('/admin/kho?q=khong-co-sku-nay');
+    await expect(page.locator('main')).toContainText('Không có SKU phù hợp');
+  });
+
   test('UC-18: lọc theo loại và tìm kiếm giữ nhau trên URL', async ({ page }) => {
     await page.goto('/admin/san-pham');
     await page.getByRole('link', { name: 'Phụ kiện' }).click();
