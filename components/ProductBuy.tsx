@@ -7,18 +7,29 @@ import { COLOR_HEX, sizeText } from '@/lib/util';
 type V = { sku: string; color: string; size: string; available: number };
 type P = { id: number; slug: string; name: string; price: number; tone: string };
 const ORDER = ['S', 'M', 'L', 'XL', 'FS'];
+const ORDER_INDEX_MAP = new Map(ORDER.map((x, i) => [x, i]));
 
 export default function ProductBuy({ p, variants, advice }: { p: P; variants: V[]; advice: string }) {
   const { add } = useCart();
   const router = useRouter();
-  const colors = [...new Set(variants.map((v) => v.color))];
-  const sizes = [...new Set(variants.map((v) => v.size))].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
-  const [color, setColor] = useState(colors.find((c) => variants.some((v) => v.color === c && v.available > 0)) || colors[0]);
-  const [size, setSize] = useState('');
+  const colors = useMemo(() => [...new Set(variants.map((v) => v.color))], [variants]);
+  const sizes = useMemo(
+    () => [...new Set(variants.map((v) => v.size))].sort((a, b) => (ORDER_INDEX_MAP.get(a) ?? 99) - (ORDER_INDEX_MAP.get(b) ?? 99)),
+    [variants]
+  );
+  const variantMap = useMemo(() => {
+    const m = new Map<string, V>();
+    for (const v of variants) m.set(`${v.color}:${v.size}`, v);
+    return m;
+  }, [variants]);
+
+  const [color, setColor] = useState(() => colors.find((c) => variants.some((v) => v.color === c && v.available > 0)) || colors[0]);
+  // UC-06 luồng 2a: khách có số đo thì chọn sẵn size gợi ý nếu còn hàng
+  const [size, setSize] = useState(() => (advice && variants.some((v) => v.color === color && v.size === advice && v.available > 0) ? advice : ''));
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
-  const cur = useMemo(() => variants.find((v) => v.color === color && v.size === size), [variants, color, size]);
-  const avail = (s: string) => variants.find((v) => v.color === color && v.size === s)?.available ?? 0;
+  const cur = variantMap.get(`${color}:${size}`);
+  const avail = (s: string) => variantMap.get(`${color}:${s}`)?.available ?? 0;
 
   const doAdd = (go: boolean) => {
     setMsg(''); setErr('');

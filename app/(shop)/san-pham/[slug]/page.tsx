@@ -10,13 +10,15 @@ import { fmt } from '@/lib/util';
 export const dynamic = 'force-dynamic';
 
 export default async function Detail({ params }: { params: { slug: string } }) {
+  // Bắt đầu xác thực phiên (async) trước, đọc sản phẩm (sync) trong lúc chờ.
+  const userPromise = getUser();
   const list = allProducts({ includeInactive: true });
   const p = list.find((x) => x.slug === params.slug);
   if (!p || !p.active) notFound();
-  const u = await getUser();
+  const u = await userPromise;
   const me = u ? get<any>('SELECT height_cm h, weight_kg w FROM users WHERE id=?', u.id) : null;
   const advice = me ? adviseSize(me.h, me.w) : '';
-  const outfit = outfitFor(p, list.filter((x) => x.active));
+  const outfit = outfitFor(p, list);
   const showGuide = p.category !== 'Phụ kiện';
   return (
     <div className="wrap" style={{ paddingTop: 40, display: 'flex', flexDirection: 'column', gap: 56 }}>

@@ -1,0 +1,32 @@
+/* cửa hàng */
+.topbar{background:var(--ink);color:#fff;font-size:12px;letter-spacing:.06em;text-align:center;padding:8px 16px}
+header{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line)}
+.hdr{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 32px;padding-top:18px;padding-bottom:18px}
+.logo{font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;letter-spacing:.2em;line-height:1;font-weight:500}
+.logo i{letter-spacing:.12em;color:var(--wine)}
+.nav{display:flex;flex-wrap:wrap;gap:6px 26px;font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+.nav a{padding:8px 0;border-bottom:1px solid transparent}.nav a:hover{border-bottom-color:var(--ink)}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:28px 20px}
+.pimg{position:relative;aspect-ratio:3/4;display:flex;align-items:flex-end;padding:14px;color:var(--ink);overflow:hidden}
+.pimg span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;background:rgba(255,255,255,.92);color:var(--ink);padding:4px 8px}
+.pcard .pimg{transition:opacity .2s}.pcard:hover .pimg{opacity:.9}.pcard:hover .pname{text-decoration:underline}
+.tag{position:absolute;top:12px;left:12px;background:var(--ink);color:#fff;font-size:11px;font-weight:600;letter-spacing:.1em;padding:4px 8px}
+.tag.sale{background:var(--err)}
+.price b{font-weight:600}.price s{color:#6A6168;margin-left:8px;font-size:13px}
+.foot{background:var(--ink);color:#fff;margin-top:96px;padding:56px 0 32px}
+.foot a{color:#E6DEE1;display:block;min-height:28px;font-size:14px}
+.sw{display:inline-block;width:26px;height:26px;border:1px solid var(--ink);vertical-align:middle}
+.pill{display:inline-flex;min-width:52px;min-height:44px;align-items:center;justify-content:center;padding:0 14px;border:1px solid var(--line-2);background:#fff;color:var(--ink);cursor:pointer;font:500 14px 'Be Vietnam Pro',system-ui,sans-serif}
+.pill:hover:not(:disabled){border-color:var(--ink)}
+.pill[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+.pill:disabled{color:#8A8186;border-style:dashed;cursor:not-allowed;text-decoration:line-through}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:40px;align-items:start}
+@media (max-width:820px){
+  .nav-main{flex-wrap:nowrap;overflow-x:auto;width:100%;order:3;padding-bottom:4px;scrollbar-width:none}
+  .nav-main::-webkit-scrollbar{display:none}
+  .nav-main a{white-space:nowrap}
+  .hdr{gap:8px 16px;padding-top:12px;padding-bottom:8px}
+  .logo{font-size:24px}
+  .pgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 12px}
+  .foot{margin-top:64px}
+}

@@ -5,7 +5,8 @@ import { mkSku, slugify, nowIso, SHIPPING_FEE } from '../lib/util';
 
 const db = getDb();
 if (process.argv.includes('--reset')) {
-  for (const t of ['inventory_logs','repair_items','workshop_returns','return_tickets','transfers','po_lines','purchase_orders','capsule_items','capsules','holds','consults','order_lines','orders','stocks','variants','products','users'])
+  db.exec('DROP TABLE IF EXISTS repair_items');
+  for (const t of ['inventory_logs','workshop_returns','return_tickets','transfers','po_lines','purchase_orders','capsule_items','capsules','holds','consults','order_lines','orders','stocks','variants','products','sessions','users'])
     db.exec(`DELETE FROM ${t}`);
   db.exec("DELETE FROM sqlite_sequence");
 }
@@ -51,9 +52,15 @@ if (get<any>('SELECT COUNT(*) c FROM products').c > 0) {
 }
 
 tx(() => {
-  // người dùng
+  // người dùng: admin, stylist, nhân viên do admin tạo (BR-18); khách hàng tự đăng ký
   const pw = hash('elora123');
-  run("INSERT INTO users(name,email,phone,password_hash,role,created_at) VALUES('Quản trị ELORA','admin@elora.vn','',?, 'admin',?)", hash('admin123'), nowIso());
+  const STAFF: [string, string, string, string][] = [
+    ['Quản trị ELORA', 'admin@elora.vn', 'admin', 'admin123'],
+    ['Stylist Mai Anh', 'stylist@elora.vn', 'stylist', 'stylist123'],
+    ['Stylist Thanh Vân', 'stylist2@elora.vn', 'stylist', 'stylist123'],
+    ['Nhân viên kho Quốc Bảo', 'kho@elora.vn', 'staff', 'nhanvien123'],
+  ];
+  for (const [n, e, r, p] of STAFF) run("INSERT INTO users(name,email,phone,password_hash,role,status,created_at) VALUES(?,?,'',?,?,'active',?)", n, e, hash(p), r, nowIso());
   const CUS: [string, string, string, string, number, number, string, string][] = [
     ['Nguyễn Thu Hà', 'ha.nguyen@example.com', '0900 000 000', 'M', 160, 52, 'Be, Xám, Xanh navy', 'Văn phòng'],
     ['Trần Minh Anh', 'minhanh@example.com', '0900 000 001', 'L', 168, 60, 'Đen, Hồng phấn', 'Khách hàng, kinh doanh'],
@@ -77,10 +84,9 @@ tx(() => {
       const base = 4 + ((pid * 3 + size.length * 5 + color.length) % 6);
       run("INSERT INTO stocks VALUES(?, 'online', ?)", v.lastInsertRowid, base);
       run("INSERT INTO stocks VALUES(?, 'showroom', ?)", v.lastInsertRowid, Math.floor(base / 3));
-      run("INSERT INTO stocks VALUES(?, 'styling', 0)", v.lastInsertRowid);
     }
   }
-  // ghi đè tồn kho các SKU mẫu: [sku, online, showroom, styling, min, idleDays]
+  // ghi đè tồn kho các SKU mẫu: [sku, online, showroom, thanh lý & sửa chữa, min, idleDays]
   const OVR: [string, number, number, number, number, number][] = [
     ['ELR-BLZ-BE-S', 4, 1, 0, 3, 12], ['ELR-BLZ-BE-M', 6, 2, 1, 3, 5], ['ELR-BLZ-BE-L', 3, 1, 0, 3, 20],
     ['ELR-BLZ-DEN-S', 2, 0, 0, 3, 40], ['ELR-BLZ-DEN-M', 5, 1, 0, 3, 18], ['ELR-BLZ-DEN-L', 4, 0, 0, 3, 72],
@@ -95,7 +101,7 @@ tx(() => {
     run('UPDATE variants SET min_stock=?, last_sold_at=? WHERE id=?', min, ago(idle * 24), v.id);
     run("UPDATE stocks SET qty=? WHERE variant_id=? AND location='online'", a, v.id);
     run("UPDATE stocks SET qty=? WHERE variant_id=? AND location='showroom'", b, v.id);
-    run("UPDATE stocks SET qty=? WHERE variant_id=? AND location='styling'", c, v.id);
+    if (c > 0) run("INSERT INTO stocks(variant_id,location,qty) VALUES(?, 'repair', ?)", v.id, c);
   }
 
   // đơn hàng
@@ -115,27 +121,30 @@ tx(() => {
     const u = user(email);
     const lines = skus.map((s) => ({ sku: s, ...price(s) }));
     const total = lines.reduce((n, l) => n + l.p, 0) + SHIPPING_FEE;
-    const o = run('INSERT INTO orders(code,user_id,status,pay_method,shipping_fee,total,recv_name,recv_phone,address,carrier,tracking,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
-      code, u.id, status, pay, SHIPPING_FEE, total, u.name, u.phone, '12 Nguyễn Huệ, Quận 1, TP.HCM (địa chỉ mẫu)', status >= 2 ? 'GHN' : '', status >= 2 ? 'GHN' + code.replace(/\D/g, '').slice(0, 9) : '', ago(hAgo));
+    const o = run('INSERT INTO orders(code,user_id,status,pay_method,shipping_fee,total,recv_name,recv_phone,address,carrier,tracking,created_at,shipped_at,delivered_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      code, u.id, status, pay, SHIPPING_FEE, total, u.name, u.phone, '12 Nguyễn Huệ, Quận 1, TP.HCM (địa chỉ mẫu)', status >= 2 ? 'GHN' : '', status >= 2 ? 'GHN' + code.replace(/\D/g, '').slice(0, 9) : '', ago(hAgo),
+      status >= 2 ? ago(hAgo - 20) : null, status === 3 ? ago(hAgo - 60) : null);
     for (const l of lines) run('INSERT INTO order_lines(order_id,sku,name,qty,price) VALUES(?,?,?,?,?)', o.lastInsertRowid, l.sku, l.n, 1, l.p);
   }
 
   // tư vấn + giữ hàng
+  // [khách, môi trường, dịp, ngân sách, cao, nặng, ghi chú, trạng thái, email stylist phụ trách, lời nhắn, món]
   const CON: [string, string, string, string, number, number, string, string, string, string, string][] = [
     ['ngoclan@example.com', 'Văn phòng', 'Họp và thuyết trình', '3 đến 6 triệu', 158, 50, 'Văn phòng điều hòa lạnh, cần thêm áo khoác mỏng.', 'Mới', '', '', ''],
     ['bichngoc@example.com', 'Ngân hàng, tài chính', 'Gặp đối tác, Đi làm hằng ngày', '6 đến 10 triệu', 165, 56, 'Thích tông be và xám. Tránh màu neon.', 'Mới', '', '', ''],
-    ['minhanh@example.com', 'Khách hàng, kinh doanh', 'Sự kiện công ty', 'Trên 10 triệu', 168, 60, 'Tiệc cuối năm cần đầm nổi bật nhưng kín đáo.', 'Đang phối', 'Stylist 1', '', 'ELR-DRS-DEN-L'],
-    ['phuongthao@example.com', 'Giáo dục', 'Đi làm hằng ngày', 'Dưới 3 triệu', 155, 45, 'Cần đồ dễ giặt, ít nhăn.', 'Đã gửi gợi ý', 'Stylist 2', 'Chị thử set sơ mi lụa với hoa tai ngọc trai cho gọn.', 'ELR-BLS-TRG-S,ELR-ERG-TRG-FS'],
-    ['ha.nguyen@example.com', 'Văn phòng', 'Họp và thuyết trình, Gặp đối tác', '3 đến 6 triệu', 160, 52, 'Họp giao ban sáng Thứ Hai.', 'Đã gửi gợi ý', 'Stylist 1', 'Set họp giao ban: áo sơ mi lụa, chân váy bút chì xám khói và túi dáng hộp.', 'ELR-BLS-TRG-M,ELR-SKT-XAM-M,ELR-BAG-DEN-FS'],
+    ['minhanh@example.com', 'Khách hàng, kinh doanh', 'Sự kiện công ty', 'Trên 10 triệu', 168, 60, 'Tiệc cuối năm cần đầm nổi bật nhưng kín đáo.', 'Đang phối', 'stylist@elora.vn', '', 'ELR-DRS-DEN-L'],
+    ['phuongthao@example.com', 'Giáo dục', 'Đi làm hằng ngày', 'Dưới 3 triệu', 155, 45, 'Cần đồ dễ giặt, ít nhăn.', 'Đã gửi gợi ý', 'stylist2@elora.vn', 'Chị thử set sơ mi lụa với hoa tai ngọc trai cho gọn.', 'ELR-BLS-TRG-S,ELR-ERG-TRG-FS'],
+    ['ha.nguyen@example.com', 'Văn phòng', 'Họp và thuyết trình, Gặp đối tác', '3 đến 6 triệu', 160, 52, 'Họp giao ban sáng Thứ Hai.', 'Đã gửi gợi ý', 'stylist@elora.vn', 'Set họp giao ban: áo sơ mi lụa, chân váy bút chì xám khói và túi dáng hộp.', 'ELR-BLS-TRG-M,ELR-SKT-XAM-M,ELR-BAG-DEN-FS'],
   ];
   const cids: number[] = [];
   for (const [email, work, occ, budget, h, w, note, st, stylist, msg, picks] of CON) {
-    const r = run('INSERT INTO consults(user_id,work_env,occasions,budget,height_cm,weight_kg,note,status,stylist,message,picks,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
-      user(email).id, work, occ, budget, h, w, note, st, stylist, msg, picks, ago(30 + cids.length * 20));
+    const sent = st === 'Đã gửi gợi ý';
+    const r = run('INSERT INTO consults(user_id,work_env,occasions,budget,height_cm,weight_kg,note,status,stylist_id,message,picks,hold_hours,sent_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      user(email).id, work, occ, budget, h, w, note, st, stylist ? user(stylist).id : null, msg, picks, sent ? 24 : null, sent ? ago(4) : null, ago(30 + cids.length * 20));
     cids.push(Number(r.lastInsertRowid));
   }
-  for (const s of ['ELR-BLS-TRG-M', 'ELR-SKT-XAM-M', 'ELR-BAG-DEN-FS']) run('INSERT INTO holds(consult_id,sku,qty,expires_at) VALUES(?,?,1,?)', cids[4], s, later(20));
-  for (const s of ['ELR-BLS-TRG-S', 'ELR-ERG-TRG-FS']) run('INSERT INTO holds(consult_id,sku,qty,expires_at) VALUES(?,?,1,?)', cids[3], s, later(5));
+  for (const s of ['ELR-BLS-TRG-M', 'ELR-SKT-XAM-M', 'ELR-BAG-DEN-FS']) run("INSERT INTO holds(consult_id,sku,qty,created_at,expires_at,status) VALUES(?,?,1,?,?,'Đang giữ')", cids[4], s, ago(4), later(20));
+  for (const s of ['ELR-BLS-TRG-S', 'ELR-ERG-TRG-FS']) run("INSERT INTO holds(consult_id,sku,qty,created_at,expires_at,status) VALUES(?,?,1,?,?,'Đang giữ')", cids[3], s, ago(19), later(5));
 
   // capsule
   const CAP: [string, string[]][] = [
@@ -143,7 +152,7 @@ tx(() => {
     ['Capsule gặp khách hàng', ['ELR-BLZ-BE-M', 'ELR-PNT-BE-M']],
     ['Capsule tiệc cuối năm', ['ELR-DRS-DEN-M', 'ELR-SCF-HPH-FS', 'ELR-ERG-TRG-FS']],
   ];
-  for (const [name, items] of CAP) { const c = run('INSERT INTO capsules(name) VALUES(?)', name); for (const s of items) run('INSERT INTO capsule_items(capsule_id,sku) VALUES(?,?)', c.lastInsertRowid, s); }
+  for (const [name, items] of CAP) { const c = run('INSERT INTO capsules(name,created_at) VALUES(?,?)', name, nowIso()); for (const s of items) run('INSERT INTO capsule_items(capsule_id,sku) VALUES(?,?)', c.lastInsertRowid, s); }
 
   // PO
   const pid = (code: string) => get<any>('SELECT id FROM products WHERE code=?', code).id;
@@ -154,25 +163,29 @@ tx(() => {
     ['PO-261012-03', 'Xưởng may Minh Châu', 'DRS', 'Đen', 450000, '30/10/2026', 0, { S: 10, M: 10, L: 10, XL: 5 }],
   ];
   for (const [code, ws, pc, color, cost, due, st, lines] of PO) {
-    const r = run('INSERT INTO purchase_orders(code,workshop,product_id,color,cost,due,status,created_at) VALUES(?,?,?,?,?,?,?,?)', code, ws, pid(pc), color, cost, due, st, nowIso());
-    for (const [z, q] of Object.entries(lines)) run('INSERT INTO po_lines(po_id,size,qty) VALUES(?,?,?)', r.lastInsertRowid, z, q);
+    const r = run('INSERT INTO purchase_orders(code,workshop,product_id,color,cost,due,status,created_at,received_at) VALUES(?,?,?,?,?,?,?,?,?)', code, ws, pid(pc), color, cost, due, st, nowIso(), st === 3 ? ago(260) : null);
+    for (const [z, q] of Object.entries(lines)) run('INSERT INTO po_lines(po_id,size,qty,recv,bad) VALUES(?,?,?,?,?)', r.lastInsertRowid, z, q, st === 3 ? q : null, st === 3 ? (z === 'L' ? 1 : 0) : null);
   }
-  run("INSERT INTO workshop_returns(code,po_code,text,status) VALUES('TX-261005-01','PO-260910-01','1 × ELR-BLS-TRG-L (lỗi đường may)','Đã trả xưởng')");
-  run("INSERT INTO transfers(code,sku,qty,from_loc,to_loc,status,created_at) VALUES('DC-261014-01','ELR-BLZ-BE-M',2,'online','showroom','Hoàn tất',?)", ago(40));
+  run("INSERT INTO workshop_returns(code,po_code,text,qty,status,created_at,returned_at) VALUES('TX-261005-01','PO-260910-01','1 × ELR-BLS-TRG-L (lỗi đường may)',1,'Đã trả xưởng',?,?)", ago(260), ago(230));
+  run("INSERT INTO transfers(code,sku,qty,from_loc,to_loc,status,created_at,received_at) VALUES('DC-261014-01','ELR-BLZ-BE-M',2,'online','showroom','Hoàn tất',?,?)", ago(40), ago(38));
   run("INSERT INTO return_tickets(order_code,user_id,sku,reason) VALUES('ELW-261008-001',?, 'ELR-DRS-DEN-XL','Đổi size')", user('khanhlinh@example.com').id);
   run("INSERT INTO return_tickets(order_code,user_id,sku,reason) VALUES('ELW-261010-001',?, 'ELR-SCF-HPH-FS','Nghi hàng lỗi')", user('phuongthao@example.com').id);
 
-  const LOG: [number, string, string, string, string][] = [
-    [30, 'ELR-ERG-TRG-FS', '+30', 'Kiểm kê, nhập tồn đầu kỳ', 'online'],
-    [260, 'ELR-BLS-TRG-XL', '+10', 'Nhập xưởng PO-260910-01 (đạt QC)', 'online'],
-    [260, 'ELR-BLS-TRG-L', 'Lỗi 1', 'Hàng lỗi trả xưởng PO-260910-01', ''],
-    [92, 'ELR-PNT-BE-M', '-1', 'Bán đơn web ELW-261012-003', 'online'],
-    [92, 'ELR-BLZ-BE-M', '-1', 'Bán đơn web ELW-261012-003', 'online'],
-    [70, 'ELR-DRS-DEN-L', '-1', 'Đổi size cho khách', 'online'],
-    [40, 'ELR-BLZ-BE-M', '+2', 'Chuyển kho DC-261014-01, nhận tại Kho Showroom', 'showroom'],
-    [40, 'ELR-BLZ-BE-M', '-2', 'Chuyển kho DC-261014-01, xuất từ Kho Tổng / Kho Online', 'online'],
-    [10, 'ELR-BLS-TRG-M', 'Giữ 1', 'Giữ hàng styling cho Nguyễn Thu Hà (24 giờ)', ''],
+  // [giờ trước, sku, thay đổi, lý do, kho, email người thực hiện, chứng từ]
+  const LOG: [number, string, string, string, string, string, string][] = [
+    [300, 'ELR-ERG-TRG-FS', '+30', 'Tồn đầu kỳ khi tạo SKU', 'online', 'kho@elora.vn', ''],
+    [260, 'ELR-BLS-TRG-XL', '+10', 'Nhập xưởng (đạt QC)', 'online', 'kho@elora.vn', 'PO-260910-01'],
+    [260, 'ELR-BLS-TRG-L', 'Lỗi 1', 'Hàng lỗi trả xưởng', '', 'kho@elora.vn', 'PO-260910-01'],
+    [72, 'ELR-PNT-BE-M', '-1', 'Bán đơn web', 'online', 'kho@elora.vn', 'ELW-261012-003'],
+    [72, 'ELR-BLZ-BE-M', '-1', 'Bán đơn web', 'online', 'kho@elora.vn', 'ELW-261012-003'],
+    [40, 'ELR-BLZ-BE-M', '-2', 'Chuyển kho, xuất từ Kho Online', 'online', 'kho@elora.vn', 'DC-261014-01'],
+    [38, 'ELR-BLZ-BE-M', '+2', 'Chuyển kho, nhận tại Showroom', 'showroom', 'kho@elora.vn', 'DC-261014-01'],
+    [19, 'ELR-BLS-TRG-S', 'Giữ 1', 'Giữ hàng styling cho Lê Phương Thảo (24 giờ)', '', 'stylist2@elora.vn', `YC-${cids[3]}`],
+    [19, 'ELR-ERG-TRG-FS', 'Giữ 1', 'Giữ hàng styling cho Lê Phương Thảo (24 giờ)', '', 'stylist2@elora.vn', `YC-${cids[3]}`],
+    [4, 'ELR-BLS-TRG-M', 'Giữ 1', 'Giữ hàng styling cho Nguyễn Thu Hà (24 giờ)', '', 'stylist@elora.vn', `YC-${cids[4]}`],
+    [4, 'ELR-SKT-XAM-M', 'Giữ 1', 'Giữ hàng styling cho Nguyễn Thu Hà (24 giờ)', '', 'stylist@elora.vn', `YC-${cids[4]}`],
+    [4, 'ELR-BAG-DEN-FS', 'Giữ 1', 'Giữ hàng styling cho Nguyễn Thu Hà (24 giờ)', '', 'stylist@elora.vn', `YC-${cids[4]}`],
   ];
-  for (const [h, sku, d, r, l] of LOG) run('INSERT INTO inventory_logs(created_at,sku,delta,reason,location) VALUES(?,?,?,?,?)', ago(h), sku, d, r, l);
+  for (const [h, sku, d, r, l, by, ref] of LOG) run('INSERT INTO inventory_logs(created_at,sku,delta,reason,location,actor_id,ref) VALUES(?,?,?,?,?,?,?)', ago(h), sku, d, r, l, user(by).id, ref);
 });
 console.log('Đã nạp dữ liệu mẫu.');

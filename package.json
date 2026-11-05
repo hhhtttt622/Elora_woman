@@ -8,7 +8,9 @@
     "start": "next start",
     "db:seed": "tsx scripts/seed.ts",
     "setup": "tsx scripts/seed.ts",
-    "db:reset": "tsx scripts/seed.ts --reset"
+    "db:reset": "tsx scripts/seed.ts --reset",
+    "test:e2e": "playwright test --project=routes",
+    "test:baseline": "playwright test --project=baseline"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -19,6 +21,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^20.16.10",
     "@types/react": "^18.3.12",

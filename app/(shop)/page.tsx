@@ -13,17 +13,30 @@ const TIPS = [
   { t: 'Phụ kiện nhỏ, hiệu quả lớn', d: 'Hoa tai ngọc trai và khăn lụa đổi hẳn tinh thần của một bộ đồ quen thuộc.' },
 ];
 
+const OUTFIT_CONFIGS = [
+  { name: 'Họp giao ban', items: ['BLS', 'SKT', 'BAG'] },
+  { name: 'Gặp khách hàng', items: ['BLZ', 'PNT', 'ERG'] },
+  { name: 'Tiệc cuối năm', items: ['DRS', 'SCF', 'ERG'] },
+] as const;
+
 export default async function Home() {
-  const [list, u] = [allProducts(), await getUser()];
-  const news = list.filter((p) => p.isNew).slice(0, 4);
-  const featured = list.filter((p) => p.featured).slice(0, 4);
-  const sale = list.filter((p) => p.salePrice).slice(0, 3);
-  const by = (code: string) => list.find((p) => p.code === code);
-  const outfits = [
-    { name: 'Họp giao ban', items: ['BLS', 'SKT', 'BAG'] },
-    { name: 'Gặp khách hàng', items: ['BLZ', 'PNT', 'ERG'] },
-    { name: 'Tiệc cuối năm', items: ['DRS', 'SCF', 'ERG'] },
-  ].map((o) => ({ ...o, products: o.items.map(by).filter(Boolean) as typeof list }));
+  const u = await getUser();
+  const list = allProducts();
+
+  const news: typeof list = [];
+  const featured: typeof list = [];
+  const sale: typeof list = [];
+  for (const p of list) {
+    if (p.isNew && news.length < 4) news.push(p);
+    if (p.featured && featured.length < 4) featured.push(p);
+    if (p.salePrice && sale.length < 3) sale.push(p);
+  }
+
+  const productByCode = new Map(list.map((p) => [p.code, p]));
+  const outfits = OUTFIT_CONFIGS.map((o) => ({
+    ...o,
+    products: o.items.map((code) => productByCode.get(code)).filter(Boolean) as typeof list,
+  }));
   return (
     <>
       <section style={{ background: '#E3E4DE' }}>

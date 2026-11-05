@@ -1,0 +1,43 @@
+/* Design tokens ELORA WOMAN.
+   Chỉ dùng bảng màu thương hiệu sẵn có; token ngữ nghĩa là tên gọi lại của các màu này. */
+:root{
+  /* màu gốc (giữ tên cũ vì đang dùng khắp nơi) */
+  --ink:#1E1B1E;--wine:#6B2437;--wine-d:#4F1B2A;--blush:#F6EEEF;--sand:#E8DCCB;--sage:#E3E4DE;--pink:#EBC5CB;
+  --err:#A3162F;--mute:#4A4247;--line:#E2D9DC;--line-2:#8A8186;--head:#F7F2F3;--pink-soft:#F3DCE1;--admin-bg:#FCFAFA;--ink-2:#3A3438;--on-dark:#E6DEE1;--on-dark-accent:#E8CBD1;
+
+  /* ngữ nghĩa */
+  --c-brand:var(--wine);--c-brand-hover:var(--wine-d);
+  --c-text:var(--ink);--c-text-muted:var(--mute);
+  --c-surface:#fff;--c-surface-alt:var(--blush);--c-surface-admin:var(--admin-bg);--c-surface-head:var(--head);
+  --c-border:var(--line);--c-border-strong:var(--line-2);
+  --c-danger:var(--err);
+  --c-success-bg:var(--sage);--c-success-text:var(--ink);
+  --c-warning-bg:var(--pink-soft);--c-warning-text:var(--wine-d);
+  --c-neutral-bg:var(--sand);
+  --c-backdrop:rgba(30,27,30,.45);
+
+  /* chữ */
+  --font-sans:'Be Vietnam Pro',system-ui,sans-serif;
+  --font-display:'Cormorant Garamond',Georgia,serif;
+  --fs-xs:12px;--fs-sm:13px;--fs-md:14px;--fs-base:15px;--fs-lg:18px;--fs-xl:22px;--fs-2xl:28px;--fs-3xl:36px;--fs-4xl:48px;
+
+  /* khoảng cách, thang 4px */
+  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:20px;--sp-6:24px;--sp-8:32px;--sp-10:40px;--sp-12:48px;--sp-18:72px;
+
+  /* bo góc: thương hiệu dùng góc vuông */
+  --radius-0:0;--radius-sm:2px;--radius-full:999px;
+
+  /* bóng */
+  --shadow-1:0 1px 2px rgba(30,27,30,.06);
+  --shadow-2:0 4px 16px rgba(30,27,30,.08);
+  --shadow-3:0 16px 48px rgba(30,27,30,.18);
+
+  /* chiều cao điều khiển */
+  --h-sm:32px;--h-md:40px;--h-input:44px;--h-lg:48px;
+
+  /* lớp xếp chồng */
+  --z-header:20;--z-sidebar:30;--z-toast:100;
+
+  /* breakpoint tham chiếu (CSS media query không đọc được biến, ghi để thống nhất):
+     sm 480px · md 820px · lg 1100px · xl 1280px */
+}

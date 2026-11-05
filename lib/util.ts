@@ -1,8 +1,11 @@
 export const COLOR_CODES: Record<string, string> = { 'Đen': 'DEN', 'Trắng': 'TRG', 'Be': 'BE', 'Xám': 'XAM', 'Xanh navy': 'NVY', 'Hồng phấn': 'HPH', 'Nâu': 'NAU' };
 export const COLOR_HEX: Record<string, string> = { 'Đen': '#1E1B1E', 'Trắng': '#FFFFFF', 'Be': '#E8DCCB', 'Xám': '#9A9A9A', 'Xanh navy': '#1F2A44', 'Hồng phấn': '#EBC5CB', 'Nâu': '#7A5A44' };
 export const COLORS = Object.keys(COLOR_CODES);
-export const LOCS: Record<string, string> = { online: 'Kho Tổng / Kho Online', showroom: 'Kho Showroom', styling: 'Kho Styling / Mượn chụp ảnh' };
-export const LOC_KEYS = ['online', 'showroom', 'styling'] as const;
+// KHO: Kho Online và Showroom là kho bán (tính vào tồn Thực tế); Kho thanh lý & sửa chữa nhận hàng đổi trả lỗi (BR-16).
+export const LOCS: Record<string, string> = { online: 'Kho Online', showroom: 'Showroom', repair: 'Kho thanh lý & sửa chữa' };
+export const LOC_KEYS = ['online', 'showroom', 'repair'] as const;
+export const SELL_LOCS = ['online', 'showroom'] as const;
+export const HOLD_STATUS = { active: 'Đang giữ', bought: 'Đã chốt mua', released: 'Đã nhả', expired: 'Hết hạn tự nhả' } as const;
 export const ORDER_STATUS = ['Chờ xác nhận', 'Đã xác nhận', 'Đang giao', 'Đã giao'];
 export const PO_STATUS = ['Đã gửi xưởng', 'Xưởng đang may', 'Đã giao đến kho', 'Đã nhập kho'];
 export const CATEGORIES = ['Đầm', 'Áo', 'Chân váy', 'Quần', 'Phụ kiện'];

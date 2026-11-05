@@ -1,8 +1,6 @@
-export function PageHead({ group, title, note }: { group: string; title: string; note?: string }) {
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-end', gap: '12px 24px' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}><span className="eb">{group}</span><h1 className="disp" style={{ fontSize: 'clamp(34px,4vw,50px)', lineHeight: 1 }}>{title}</h1></div>
-      {note && <span className="note" style={{ maxWidth: 360 }}>{note}</span>}
-    </div>
-  );
+import { PageHeader } from '@/components/layout/Page';
+
+/** @deprecated Dùng PageHeader. Giữ lại để các trang chưa refactor vẫn chạy. */
+export function PageHead({ group, title, note, actions }: { group: string; title: string; note?: string; actions?: React.ReactNode }) {
+  return <PageHeader eyebrow={group} title={title} description={note} actions={actions} />;
 }

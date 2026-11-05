@@ -1,18 +1,19 @@
 'use server';
 import { revalidatePath } from 'next/cache';
-import { all, get, run, tx } from '@/lib/db';
-import { getUser } from '@/lib/auth';
+import { get, run, tx } from '@/lib/db';
+import { requirePerm } from '@/lib/auth';
 import { availableOf, sweepHolds } from '@/lib/inventory';
 import { SHIPPING_FEE, nowIso, stampDay, pad } from '@/lib/util';
 import type { Res } from './auth';
 
+// UC-08
 export async function placeOrderAction(input: { lines: { sku: string; qty: number }[]; name: string; phone: string; address: string; pay: string; note: string }): Promise<Res & { code?: string }> {
-  const u = await getUser();
-  if (!u) return { error: 'Hãy đăng nhập để đặt hàng.' };
+  let u;
+  try { u = await requirePerm('UC-08'); } catch (e: any) { return { error: e.message }; }
   if (!input.lines.length) return { error: 'Giỏ hàng đang trống.' };
-  if (input.name.trim().length < 2) return { error: 'Nhập họ tên người nhận.' };
+  if (input.name.trim().length < 2) return { error: 'Họ tên người nhận cần ít nhất 2 ký tự.' };
   if (!/^[0-9 +]{9,14}$/.test(input.phone.trim())) return { error: 'Số điện thoại chưa đúng.' };
-  if (input.address.trim().length < 8) return { error: 'Nhập địa chỉ giao hàng đầy đủ.' };
+  if (input.address.trim().length < 8) return { error: 'Địa chỉ giao hàng cần ít nhất 8 ký tự.' };
   if (!['Thanh toán khi nhận hàng', 'Chuyển khoản'].includes(input.pay)) return { error: 'Chọn hình thức thanh toán.' };
   sweepHolds();
   try {
@@ -20,7 +21,7 @@ export async function placeOrderAction(input: { lines: { sku: string; qty: numbe
       let total = SHIPPING_FEE; const items: any[] = [];
       for (const l of input.lines) {
         const qty = Math.floor(l.qty);
-        if (!(qty > 0)) throw new Error('Số lượng không hợp lệ.');
+        if (!(qty > 0) || qty > 10) throw new Error('Số lượng mỗi món từ 1 đến 10.');
         const v = get<any>('SELECT v.sku, p.name, p.price, p.sale_price sp, p.active, v.color, v.size FROM variants v JOIN products p ON p.id=v.product_id WHERE v.sku=?', l.sku);
         if (!v || !v.active) throw new Error(`Sản phẩm ${l.sku} hiện không bán.`);
         if (availableOf(l.sku) < qty) throw new Error(`${v.name} (${v.color}, ${v.size}) chỉ còn ${Math.max(0, availableOf(l.sku))} sản phẩm.`);
@@ -39,9 +40,10 @@ export async function placeOrderAction(input: { lines: { sku: string; qty: numbe
   } catch (e: any) { return { error: e.message }; }
 }
 
+// UC-10
 export async function createConsultAction(_: Res, f: FormData): Promise<Res> {
-  const u = await getUser();
-  if (!u) return { error: 'Hãy đăng nhập để gửi yêu cầu tư vấn.' };
+  let u;
+  try { u = await requirePerm('UC-10'); } catch (e: any) { return { error: e.message }; }
   const s = (k: string) => String(f.get(k) ?? '').trim();
   const occ = f.getAll('occasions').join(', ');
   if (!s('workEnv')) return { error: 'Chọn môi trường làm việc.' };
