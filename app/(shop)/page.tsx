@@ -4,6 +4,7 @@ import { getUser } from '@/lib/auth';
 import { ProductCard } from '@/components/Shop';
 import ConsultForm from '@/components/ConsultForm';
 import { fmt } from '@/lib/util';
+import { all as dbAll } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,8 @@ const OUTFIT_CONFIGS = [
 export default async function Home() {
   const u = await getUser();
   const list = allProducts();
+  const now = new Date().toISOString();
+  const campaigns = dbAll<any>("SELECT name,code,description,kind,value,max_discount,min_order,ends_at FROM promotions WHERE status='active' AND show_home=1 AND occasion!='birthday' AND audience='all' AND starts_at<=? AND ends_at>=? ORDER BY ends_at", now, now);
 
   const news: typeof list = [];
   const featured: typeof list = [];
@@ -65,16 +68,15 @@ export default async function Home() {
         </div>
       </Section>
 
-      <section style={{ background: 'var(--wine)', color: '#fff', marginTop: 72 }}>
+      {campaigns.length > 0 && <section style={{ background: 'var(--wine)', color: '#fff', marginTop: 72 }}>
         <div className="wrap" style={{ padding: '56px clamp(16px,4vw,64px)', display: 'flex', flexDirection: 'column', gap: 24 }}>
-          <span className="eb" style={{ color: '#F3DCE1' }}>Chương trình khuyến mãi</span>
-          <h2 className="disp" style={{ fontSize: 'clamp(32px,4vw,52px)' }}>Giảm đến 20% cho set công sở cuối năm</h2>
+          <span className="eb" style={{ color: '#F3DCE1' }}>Ưu đãi đang diễn ra</span>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16 }}>
-            {sale.map((p) => <Link key={p.id} href={`/san-pham/${p.slug}`} style={{ background: '#fff', color: 'var(--ink)', padding: 18, display: 'flex', flexDirection: 'column', gap: 6 }}><b>{p.name}</b><span className="price"><b style={{ color: '#A3162F' }}>{fmt(p.salePrice!)}</b><s>{fmt(p.price)}</s></span></Link>)}
+            {campaigns.map((p: any) => <article key={p.code} style={{ background: '#fff', color: 'var(--ink)', padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}><b>{p.name}</b><strong>{p.kind === 'percent' ? `Giảm ${p.value}%${p.max_discount ? ` · tối đa ${fmt(p.max_discount)}` : ''}` : `Giảm ${fmt(p.value)}`}</strong><code style={{ fontSize: 18 }}>{p.code}</code><span className="note">Đơn tối thiểu {fmt(p.min_order)} · Hạn đến {new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' }).format(new Date(p.ends_at))}</span>{p.description && <span>{p.description}</span>}</article>)}
           </div>
-          <Link href="/san-pham?sale=1" className="btn" style={{ background: '#fff', color: 'var(--wine)', alignSelf: 'flex-start' }}>Xem sản phẩm khuyến mãi</Link>
+          <Link href="/san-pham" className="btn" style={{ background: '#fff', color: 'var(--wine)', alignSelf: 'flex-start' }}>Chọn sản phẩm</Link>
         </div>
-      </section>
+      </section>}
 
       <Section eyebrow="Góc tư vấn" title="Gợi ý từ stylist">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 24 }}>

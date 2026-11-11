@@ -25,7 +25,7 @@ export default async function Consult({ searchParams }: { searchParams: { id?: s
   const pickSet = new Set(picks);
   const likeSet = new Set(likes);
   // UC-13 bước 2: biến thể đang bán, còn khả dụng, đúng size và màu khách thích (2a bỏ điều kiện màu, 2b phụ kiện không lọc size)
-  const cands = cs && owner ? vs.filter((v) => v.active && v.available > 0 && !pickSet.has(v.sku) && (v.size === 'FS' || v.size === cs.usize) && (searchParams.all || likeSet.size === 0 || likeSet.has(v.color)))
+  const cands = cs && owner ? vs.filter((v) => v.active && v.variantActive && v.available > 0 && !pickSet.has(v.sku) && (v.size === 'FS' || v.size === cs.usize) && (searchParams.all || likeSet.size === 0 || likeSet.has(v.color)))
     .map((v) => ({ sku: v.sku, label: `${v.productName} · ${v.color} · ${sizeText(v.size)} · khả dụng ${v.available}` })) : [];
   const pickRows = picks.map((s) => { const v = variantMap.get(s); return { sku: s, label: v ? `${v.productName} · ${v.color} · ${sizeText(v.size)}` : s, priceText: v ? fmt(v.price) : '', availText: v ? `khả dụng ${v.available}` : '' }; });
   const holds = cs ? all<any>('SELECT * FROM holds WHERE consult_id=? AND status=? AND expires_at > ?', cs.id, HOLD_STATUS.active, nowIso()) : [];

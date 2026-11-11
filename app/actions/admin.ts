@@ -62,7 +62,18 @@ export async function setOrderStatus(code: string, status: number): Promise<R> {
   return guard("UC-17", () => {
     const o = get<any>("SELECT * FROM orders WHERE code=?", code);
     if (!o) throw new Error("Không tìm thấy đơn.");
+    if (![0, 1, 2, 3, 4].includes(status)) throw new Error("Trạng thái đơn hàng không hợp lệ.");
     if (status === o.status) return done("Không đổi.");
+    if (status === 4) {
+      if (o.status >= 2) throw new Error("Không thể hủy đơn đã xuất kho.");
+      tx(() => {
+        run("UPDATE orders SET status=4, payment_status=CASE WHEN pay_method='Chuyển khoản' AND payment_status IN ('PENDING_PAYMENT','WAITING_CONFIRMATION') THEN 'CANCELLED' ELSE payment_status END WHERE id=?", o.id);
+        run("UPDATE promotion_redemptions SET status='released',released_at=? WHERE order_id=? AND status='reserved'", nowIso(), o.id);
+      });
+      return done(`Đã hủy đơn ${code} và khôi phục lượt ưu đãi.`);
+    }
+    if (o.pay_method === "Chuyển khoản" && status >= 1 && o.payment_status !== "PAID")
+      throw new Error("Chỉ xác nhận hoặc xử lý giao đơn chuyển khoản sau khi nhân viên đã đối soát và xác nhận đã nhận tiền.");
     if (status === 2)
       throw new Error(
         "Đơn chỉ chuyển sang Đang giao khi đóng gói ở mục Xuất kho, để kho được trừ đúng.",
@@ -71,12 +82,10 @@ export async function setOrderStatus(code: string, status: number): Promise<R> {
       throw new Error("Đơn đã xuất kho, không chuyển ngược lại.");
     if (status === 3 && o.status !== 2)
       throw new Error("Chỉ đơn đang giao mới chuyển sang Đã giao.");
-    run(
-      "UPDATE orders SET status=?, delivered_at=? WHERE id=?",
-      status,
-      status === 3 ? nowIso() : null,
-      o.id,
-    );
+    tx(() => {
+      run("UPDATE orders SET status=?, delivered_at=? WHERE id=?", status, status === 3 ? nowIso() : null, o.id);
+      if (status === 3) run("UPDATE promotion_redemptions SET status='completed',completed_at=? WHERE order_id=? AND status='reserved'", nowIso(), o.id);
+    });
     return done(`Đã cập nhật đơn ${code}.`);
   });
 }
@@ -89,11 +98,13 @@ export async function saveProduct(input: {
   price: number;
   salePrice?: number | null;
   material: string;
+  collection?: string;
   description: string;
   image?: string;
   active: boolean;
   featured: boolean;
   isNew: boolean;
+  relatedIds?: number[];
 }): Promise<R> {
   return guard("UC-18", () => {
     if (!input.name.trim()) throw new Error("Nhập tên sản phẩm.");
@@ -118,6 +129,7 @@ export async function saveProduct(input: {
       input.price,
       input.salePrice || null,
       input.material,
+      (input.collection || '').trim(),
       input.description,
       image,
       +input.active,
@@ -139,7 +151,7 @@ export async function saveProduct(input: {
           "Sản phẩm đã có SKU, không đổi được giữa phụ kiện (Free size) và quần áo có size.",
         );
       run(
-        "UPDATE products SET name=?,category=?,price=?,sale_price=?,material=?,description=?,image_url=?,active=?,featured=?,is_new=? WHERE id=?",
+        "UPDATE products SET name=?,category=?,price=?,sale_price=?,material=?,collection=?,description=?,image_url=?,active=?,featured=?,is_new=? WHERE id=?",
         ...vals,
         input.id,
       );
@@ -163,17 +175,24 @@ export async function saveProduct(input: {
           (get<any>("SELECT COUNT(*) c FROM products").c || 0) + 1,
         ).padStart(2, "0");
       run(
-        "INSERT INTO products(slug,code,name,category,price,sale_price,material,description,image_url,active,featured,is_new) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO products(slug,code,name,category,price,sale_price,material,collection,description,image_url,active,featured,is_new) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
         slug,
         code,
         ...vals,
       );
+    }
+    const productId = input.id || Number(get<any>('SELECT id FROM products ORDER BY id DESC LIMIT 1')?.id);
+    if (Array.isArray(input.relatedIds)) {
+      const related = [...new Set(input.relatedIds.map(Number))].filter((id: number) => Number.isInteger(id) && id !== productId && !!get('SELECT id FROM products WHERE id=? AND active=1', id));
+      run('DELETE FROM product_recommendations WHERE product_id=?', productId);
+      related.forEach((id: number, position: number) => run('INSERT INTO product_recommendations(product_id,related_product_id,position) VALUES(?,?,?)', productId, id, position));
     }
     revalidatePath("/", "layout");
     return done(
       input.id
         ? "Đã cập nhật sản phẩm."
         : "Đã tạo sản phẩm. Tạo SKU ở mục Tồn kho và SKU để bắt đầu bán.",
+      { productId },
     );
   });
 }
@@ -232,6 +251,19 @@ export async function createSku(input: {
       return done(`Đã tạo ${r.sku}.`, { sku: r.sku });
     }),
   );
+}
+
+export async function saveSkuConfiguration(input: { sku: string; active: boolean; priceOverride: number | null; image: string }): Promise<R> {
+  return guard('UC-21', () => {
+    const variant = get<any>('SELECT id FROM variants WHERE sku=?', input.sku);
+    if (!variant) throw new Error('Không tìm thấy SKU.');
+    if (input.priceOverride !== null && (!Number.isInteger(input.priceOverride) || input.priceOverride <= 0)) throw new Error('Giá riêng của SKU phải là số nguyên lớn hơn 0.');
+    const image = input.image.trim();
+    if (image && !/^\/uploads\/products\/[0-9a-f-]+\.(jpg|png|webp)$/.test(image)) throw new Error('Ảnh biến thể cần là ảnh đã tải lên trong hệ thống.');
+    run('UPDATE variants SET active=?,price_override=?,image_url=? WHERE id=?', +input.active, input.priceOverride, image, variant.id);
+    revalidatePath('/', 'layout');
+    return done(`Đã cập nhật biến thể ${input.sku}.`);
+  });
 }
 
 // ---------- UC-24, UC-25 Capsule ----------
@@ -1111,3 +1143,4 @@ export async function setAccountLocked(
     );
   });
 }
+

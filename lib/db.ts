@@ -31,3 +31,4 @@ export const all = <T = any>(sql: string, ...p: any[]): T[] => getDb().prepare(s
 export const get = <T = any>(sql: string, ...p: any[]): T | undefined => getDb().prepare(sql).get(...p) as T | undefined;
 export const run = (sql: string, ...p: any[]) => getDb().prepare(sql).run(...p);
 export const tx = <T,>(fn: () => T): T => getDb().transaction(fn)();
+export const txImmediate = <T,>(fn: () => T): T => getDb().transaction(fn).immediate();

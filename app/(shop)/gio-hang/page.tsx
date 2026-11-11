@@ -2,9 +2,12 @@
 import Link from "next/link";
 import { useCart } from "@/lib/cart";
 import { fmt, sizeText, SHIPPING_FEE } from "@/lib/util";
+import { useState, useTransition } from 'react';
+import { quotePromotionAction } from '@/app/actions/promotions';
 
 export default function CartPage() {
   const { lines, setQty, remove, ready } = useCart();
+  const [promo, setPromo] = useState(''); const [quote, setQuote] = useState<{name:string;discount:number}|null>(null); const [promoError, setPromoError] = useState(''); const [pending, start] = useTransition();
   const sub = lines.reduce((n, l) => n + l.price * l.qty, 0);
   return (
     <div
@@ -76,7 +79,7 @@ export default function CartPage() {
                         style={{ width: 80 }}
                         value={l.qty}
                         onChange={(e) =>
-                          setQty(l.sku, parseInt(e.target.value, 10) || 1)
+                          (setQty(l.sku, parseInt(e.target.value, 10) || 1), setQuote(null), setPromoError(''))
                         }
                       />
                     </td>
@@ -84,7 +87,7 @@ export default function CartPage() {
                       <b>{fmt(l.price * l.qty)}</b>
                     </td>
                     <td>
-                      <button className="textbtn" onClick={() => remove(l.sku)}>
+                      <button className="textbtn" onClick={() => { remove(l.sku); setQuote(null); setPromoError(''); }}>
                         Xóa
                       </button>
                     </td>
@@ -93,7 +96,7 @@ export default function CartPage() {
               </tbody>
             </table>
           </div>
-          <aside
+            <aside
             className="card"
             style={{ flex: "1 1 300px", background: "#F6EEEF" }}
           >
@@ -106,6 +109,8 @@ export default function CartPage() {
               <span>Phí giao hàng</span>
               <b>{fmt(SHIPPING_FEE)}</b>
             </div>
+            <div className="fl"><label className="lbl" htmlFor="cart-promo">Mã ưu đãi</label><div style={{display:'flex',gap:8}}><input id="cart-promo" className="fld" value={promo} onChange={(e)=>{setPromo(e.target.value);setQuote(null);setPromoError('');}} placeholder="Nhập mã giảm giá" /><button className="ghost" type="button" disabled={pending||!promo.trim()} onClick={()=>start(async()=>{const r=await quotePromotionAction(promo,lines.map((l)=>({sku:l.sku,qty:l.qty})));if(r.error){setPromoError(r.error);setQuote(null);}else{setPromoError('');setQuote(r.quote!);}})}>{pending?'…':'Áp dụng'}</button></div>{promoError&&<span className="err" role="alert">{promoError}</span>}</div>
+            {quote&&<div style={{display:'flex',justifyContent:'space-between'}}><span>{quote.name} ({promo.toUpperCase()})</span><b>−{fmt(quote.discount)}</b></div>}
             <div
               style={{
                 display: "flex",
@@ -116,9 +121,9 @@ export default function CartPage() {
               }}
             >
               <span>Tổng cộng</span>
-              <b>{fmt(sub + SHIPPING_FEE)}</b>
+              <b>{fmt(sub + SHIPPING_FEE - (quote?.discount||0))}</b>
             </div>
-            <Link href="/thanh-toan" className="btn">Tiến hành thanh toán</Link>
+            <Link href={`/thanh-toan${quote?`?promo=${encodeURIComponent(promo.trim().toUpperCase())}`:''}`} className="btn">Tiến hành thanh toán</Link>
           </aside>
         </div>
       )}

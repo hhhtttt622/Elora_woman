@@ -1,26 +1,40 @@
 'use client';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/cart';
 import { placeOrderAction } from '@/app/actions/shop';
 import { fmt, sizeText, SHIPPING_FEE } from '@/lib/util';
+import { quotePromotionAction } from '@/app/actions/promotions';
 
 const PAY_METHODS = ['Thanh toán khi nhận hàng', 'Chuyển khoản'] as const;
 
-export default function Checkout({ name, phone, done }: { name: string; phone: string; done?: string }) {
+export default function Checkout({ name, phone, done, initialPromo = '', offers = [] }: { name: string; phone: string; done?: string; initialPromo?: string; offers?: {name:string;code:string}[] }) {
   const { lines, clear, ready } = useCart();
+  const router = useRouter();
   const [f, setF] = useState({ name, phone, address: '', pay: 'Thanh toán khi nhận hàng', note: '' });
   const [err, setErr] = useState('');
   const [pending, start] = useTransition();
   const [code, setCode] = useState(done || '');
+  const [navigating, setNavigating] = useState(false);
+  const [promo, setPromo] = useState(initialPromo); const [discount, setDiscount] = useState(0); const [promoName, setPromoName] = useState(''); const [promoError, setPromoError] = useState('');
   const sub = lines.reduce((n, l) => n + l.price * l.qty, 0);
   const set = (k: string) => (e: any) => { setF((prev) => ({ ...prev, [k]: e.target.value })); setErr(''); };
+  const applyPromo = async (value = promo) => { setPromoError(''); if (!value.trim()) { setDiscount(0); setPromoName(''); return; } const result = await quotePromotionAction(value, lines.map((l) => ({ sku:l.sku, qty:l.qty }))); if (result.error) { setDiscount(0); setPromoName(''); setPromoError(result.error); } else { setPromo(result.quote!.code); setDiscount(result.quote!.discount); setPromoName(result.quote!.name); } };
+  useEffect(() => { if (ready && initialPromo) void applyPromo(initialPromo); }, [ready, initialPromo]);
 
+  if (navigating) return (
+    <div className="wrap" style={{ paddingTop: 56, maxWidth: 640, display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <span className="eb">Đang xử lý</span>
+      <h1 className="disp" style={{ fontSize: 36 }}>Đang chuyển đến trang thanh toán VietQR...</h1>
+      <p className="note">Vui lòng chờ trong giây lát.</p>
+    </div>
+  );
   if (code) return (
     <div className="wrap" style={{ paddingTop: 56, maxWidth: 640, display: 'flex', flexDirection: 'column', gap: 18 }}>
       <span className="eb">Đặt hàng thành công</span>
       <h1 className="disp" style={{ fontSize: 48, lineHeight: 1 }}>Cảm ơn bạn</h1>
-      <p>Mã đơn của bạn là <b>{code}</b>. Bạn có thể theo dõi đơn trong tài khoản. Bản demo này chưa kết nối cổng thanh toán thật.</p>
+      <p>Mã đơn của bạn là <b>{code}</b>. Bạn có thể theo dõi đơn trong tài khoản.</p>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}><Link href="/tai-khoan?tab=track" className="btn">Theo dõi đơn hàng</Link><Link href="/san-pham" className="ghost" style={{ minHeight: 48 }}>Tiếp tục mua sắm</Link></div>
     </div>);
   if (ready && lines.length === 0) return <div className="wrap" style={{ paddingTop: 56 }}><div className="card" style={{ maxWidth: 520, background: '#F6EEEF' }}><b>Giỏ hàng đang trống</b><Link href="/san-pham" className="btn" style={{ alignSelf: 'flex-start' }}>Chọn sản phẩm</Link></div></div>;
@@ -28,8 +42,17 @@ export default function Checkout({ name, phone, done }: { name: string; phone: s
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     start(async () => {
-      const r = await placeOrderAction({ lines: lines.map((l) => ({ sku: l.sku, qty: l.qty })), ...f });
-      if (r.error) setErr(r.error); else if (r.code) { clear(); setCode(r.code); }
+      const r = await placeOrderAction({ lines: lines.map((l) => ({ sku: l.sku, qty: l.qty })), ...f, promotionCode: promo });
+      if (r.error) setErr(r.error);
+      else if (r.code) {
+        clear();
+        if (f.pay === 'Chuyển khoản') {
+          setNavigating(true);
+          router.push(`/thanh-toan/${encodeURIComponent(r.code)}`);
+        } else {
+          setCode(r.code);
+        }
+      }
     });
   };
   return (
@@ -42,9 +65,10 @@ export default function Checkout({ name, phone, done }: { name: string; phone: s
             <div className="fl"><label className="lbl" htmlFor="co-phone">Số điện thoại</label><input id="co-phone" className="fld" value={f.phone} onChange={set('phone')} /></div>
           </div>
           <div className="fl"><label className="lbl" htmlFor="co-addr">Địa chỉ giao hàng</label><input id="co-addr" className="fld" value={f.address} onChange={set('address')} placeholder="Số nhà, đường, phường, quận, tỉnh/thành" /></div>
+          <div className="fl"><label className="lbl" htmlFor="co-promo">Mã ưu đãi của bạn</label><div style={{display:'flex',gap:8}}><input id="co-promo" className="fld" value={promo} onChange={(e)=>{setPromo(e.target.value);setDiscount(0);setPromoError('');}} placeholder="Nhập mã giảm giá" /><button className="ghost" type="button" disabled={pending||!promo.trim()} onClick={()=>start(()=>{void applyPromo();})}>Áp dụng</button></div>{offers.length>0&&<select className="fld" aria-label="Chọn ưu đãi đang có" value="" onChange={(e)=>{setPromo(e.target.value);void applyPromo(e.target.value);}}><option value="">Chọn ưu đãi đang hoạt động</option>{offers.map((o)=><option key={o.code} value={o.code}>{o.name} · {o.code}</option>)}</select>}{promoError&&<span className="err" role="alert">{promoError}</span>}{promoName&&<span className="ok" role="status">Đã áp dụng: {promoName}</span>}</div>
           <fieldset style={{ border: 0, padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}><legend className="lbl" style={{ marginBottom: 8 }}>Hình thức thanh toán</legend>
             {PAY_METHODS.map((m) => <label key={m} style={{ display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer' }}><input type="radio" name="pay" checked={f.pay === m} onChange={() => setF((prev) => ({ ...prev, pay: m }))} style={{ width: 20, height: 20, accentColor: '#6B2437' }} />{m}</label>)}
-            {f.pay === 'Chuyển khoản' ? <p className="note">Thông tin tài khoản nhận tiền: [SỐ TÀI KHOẢN] · [NGÂN HÀNG]. Chưa kết nối cổng thanh toán.</p> : null}</fieldset>
+            {f.pay === 'Chuyển khoản' ? <p className="note">Sau khi đặt hàng, bạn sẽ nhận được mã VietQR chứa số tiền và nội dung chuyển khoản để thanh toán trong 15 phút.</p> : null}</fieldset>
           <div className="fl"><label className="lbl" htmlFor="co-note">Ghi chú</label><textarea id="co-note" className="fld" value={f.note} onChange={set('note')} /></div>
           {err && <p className="err" role="alert">{err}</p>}
         </div>
@@ -52,7 +76,8 @@ export default function Checkout({ name, phone, done }: { name: string; phone: s
           <h2 className="h2">Đơn hàng của bạn</h2>
           <ul className="list">{lines.map((l) => <li key={l.sku}><span>{l.qty} × {l.name}<br /><span className="note">{l.color} · {sizeText(l.size)}</span></span><b>{fmt(l.price * l.qty)}</b></li>)}</ul>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Phí giao hàng</span><b>{fmt(SHIPPING_FEE)}</b></div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 18 }}><span>Tổng cộng</span><b>{fmt(sub + SHIPPING_FEE)}</b></div>
+          {!!discount&&<div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Ưu đãi</span><b>−{fmt(discount)}</b></div>}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 18 }}><span>Tổng cộng</span><b>{fmt(sub + SHIPPING_FEE - discount)}</b></div>
           <button className="btn" disabled={pending}>{pending ? 'Đang đặt hàng...' : 'Đặt hàng'}</button>
         </aside>
       </form>

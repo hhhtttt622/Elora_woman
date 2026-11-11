@@ -11,7 +11,7 @@ export function statusTone(domain: StatusDomain, value: string | number): Tone {
     case 'po': return (['pink', 'sand', '', 'dark'] as Tone[])[Number(value)] ?? '';
     case 'consult': return value === 'Mới' ? 'red' : value === 'Đang phối' ? 'sand' : 'dark';
     case 'transfer': return value === 'Hoàn tất' ? 'dark' : 'sand';
-    case 'return': return value === 'Chờ kiểm tra' ? 'pink' : 'dark';
+    case 'return': return (value === 'Chờ nhận hàng' || value === 'Chờ kiểm tra') ? 'pink' : 'dark';
     case 'workshop': return value === 'Đã trả xưởng' ? 'dark' : 'pink';
     case 'stock': return value === 'Hết hàng' ? 'red' : value === 'Sắp hết' ? 'pink' : '';
     case 'account': return value === 'locked' ? 'red' : 'dark';

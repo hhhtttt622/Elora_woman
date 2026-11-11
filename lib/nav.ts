@@ -9,6 +9,7 @@ export const ADMIN_NAV: { group: string; items: [string, string, Perm][] }[] = [
       ["/admin/don-hang", "Đơn hàng", "UC-17"],
       ["/admin/don-hang/xuat-kho", "Xuất kho", "UC-32"],
       ["/admin/san-pham", "Sản phẩm", "UC-18"],
+      ["/admin/khuyen-mai", "Khuyến mãi", "UC-40"],
       ["/admin/khach-hang", "Khách hàng", "UC-19"],
     ],
   },

@@ -8,6 +8,7 @@ type Props = {
   title: React.ReactNode;
   eyebrow?: React.ReactNode;
   size?: 'sm' | 'md' | 'lg';
+  className?: string;
   footer?: React.ReactNode;
   children: React.ReactNode;
 };
@@ -23,7 +24,7 @@ const drop = (d: HTMLDialogElement | null) => { const i = d ? stack.indexOf(d) :
  * Dùng phần tử <dialog> gốc: showModal() có sẵn khóa focus, phím Esc, lớp nền,
  * và trả focus về nút đã mở khi đóng. Không cần thư viện ngoài.
  */
-function Shell({ open, onClose, title, eyebrow, size = 'md', footer, children, kind }: Props & { kind: 'modal' | 'drawer' }) {
+function Shell({ open, onClose, title, eyebrow, size = 'md', className = '', footer, children, kind }: Props & { kind: 'modal' | 'drawer' }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
   useEffect(() => {
@@ -38,7 +39,7 @@ function Shell({ open, onClose, title, eyebrow, size = 'md', footer, children, k
   return (
     <dialog
       ref={ref}
-      className={`ui-dialog ${kind === 'drawer' ? 'ui-drawer' : 'ui-modal'} ${size}`}
+      className={`ui-dialog ${kind === 'drawer' ? 'ui-drawer' : 'ui-modal'} ${size} ${className}`}
       aria-labelledby={id}
       onCancel={(e) => { e.preventDefault(); onClose(); }}
       onMouseDown={(e) => { if (e.target === ref.current) onClose(); }}

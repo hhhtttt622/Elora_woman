@@ -76,7 +76,8 @@ test.describe('Liên kết sâu nội bộ (mục 2.4)', () => {
       [`/admin/kho/capsule?add=${sku}`, /Tạo capsule mới/],
       [custHref!, /Hồ sơ phong cách/],
       ['/admin/don-hang/xuat-kho', /Danh sách nhặt hàng|Chưa có đơn nào chờ nhặt hàng/],
-      ['/admin/don-hang/doi-tra', /Tiếp nhận hàng đổi trả/],
+      ['/admin/don-hang/doi-tra', /Tạo phiếu đổi trả/],
+      ['/admin/don-hang/doi-tra?tab=repair', /Kho sửa chữa/],
       ['/admin/kho/nhat-ky?idle=60', /Báo cáo hàng chậm luân chuyển/],
     ];
     for (const [href, text] of links) {

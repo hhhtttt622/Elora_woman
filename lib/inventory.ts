@@ -1,10 +1,12 @@
-import { cache as reactCache } from 'react';
-const cache = typeof reactCache === 'function' ? reactCache : <T extends (...args: any[]) => any>(fn: T) => fn;
+import * as React from 'react';
 import { all, get, run, tx } from './db';
 import { LOC_KEYS, SELL_LOCS, HOLD_STATUS, nowIso, mkSku, stampDay, pad, barcodeDigits } from './util';
+import { expirePendingPayments } from './payment';
+
+const cache = typeof React.cache === 'function' ? React.cache : <T extends (...args: any[]) => any>(fn: T) => fn;
 
 export type VariantRow = {
-  id: number; sku: string; productId: number; productName: string; productCode: string; category: string; price: number; active: number;
+  id: number; sku: string; productId: number; productName: string; productCode: string; category: string; price: number; priceOverride: number | null; image: string; active: number; variantActive: number;
   color: string; size: string; minStock: number; online: number; showroom: number; repair: number; physical: number; reserved: number; available: number; lastSoldAt: string;
 };
 
@@ -28,9 +30,10 @@ export function sweepHolds() {
 
 /** Tạm giữ = lệnh giữ còn hạn + số lượng của đơn chưa xuất kho (BR-01). */
 export function reservedMap(): Record<string, number> {
+  expirePendingPayments();
   const m: Record<string, number> = {};
   for (const r of all<any>('SELECT sku, SUM(qty) q FROM holds WHERE status=? AND expires_at > ? GROUP BY sku', HOLD_STATUS.active, nowIso())) m[r.sku] = (m[r.sku] || 0) + r.q;
-  for (const r of all<any>('SELECT l.sku, SUM(l.qty) q FROM order_lines l JOIN orders o ON o.id=l.order_id WHERE o.status < 2 GROUP BY l.sku')) m[r.sku] = (m[r.sku] || 0) + r.q;
+  for (const r of all<any>("SELECT l.sku, SUM(l.qty) q FROM order_lines l JOIN orders o ON o.id=l.order_id WHERE o.status < 2 AND o.payment_status<> 'CANCELLED' GROUP BY l.sku")) m[r.sku] = (m[r.sku] || 0) + r.q;
   return m;
 }
 
@@ -39,7 +42,7 @@ const SELL_IN = SELL_LOCS.map((l) => `'${l}'`).join(',');
 export function listVariants(productId?: number): VariantRow[] {
   const res = reservedMap();
   const rows = all<any>(
-    `SELECT v.id, v.sku, v.product_id productId, p.name productName, p.code productCode, p.category, p.price, p.active, v.color, v.size, v.min_stock minStock, v.last_sold_at lastSoldAt,
+    `SELECT v.id, v.sku, v.product_id productId, p.name productName, p.code productCode, p.category, COALESCE(p.sale_price,v.price_override,p.price) price, v.price_override priceOverride, v.image_url image, p.active, v.active variantActive, v.color, v.size, v.min_stock minStock, v.last_sold_at lastSoldAt,
       COALESCE(SUM(CASE WHEN s.location='online' THEN s.qty END),0) online,
       COALESCE(SUM(CASE WHEN s.location='showroom' THEN s.qty END),0) showroom,
       COALESCE(SUM(CASE WHEN s.location='repair' THEN s.qty END),0) repair
@@ -50,7 +53,7 @@ export function listVariants(productId?: number): VariantRow[] {
     // Tồn thực tế chỉ tính kho bán; hàng ở kho thanh lý và hàng đang điều chuyển không tính (BR-15).
     const physical = r.online + r.showroom;
     const reserved = res[r.sku] || 0;
-    return { ...r, physical, reserved, available: physical - reserved };
+    return { ...r, physical, reserved, available: r.variantActive ? physical - reserved : 0 };
   });
 }
 
