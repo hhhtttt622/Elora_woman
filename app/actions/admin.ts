@@ -290,8 +290,89 @@ export async function sellCapsule(id: number): Promise<R> {
 }
 
 // ---------- UC-26 đến UC-29 Đặt may ----------
+export async function saveSupplier(input: {
+  id?: number;
+  name: string;
+  contactName: string;
+  phone: string;
+  email: string;
+  address: string;
+  notes: string;
+}): Promise<R> {
+  return guard("UC-26", () =>
+    tx(() => {
+      const name = input.name.trim();
+      const contactName = input.contactName.trim();
+      const phone = input.phone.trim();
+      const email = input.email.trim().toLowerCase();
+      if (name.length < 2) throw new Error("Tên nhà cung cấp cần ít nhất 2 ký tự.");
+      if (name.length > 120) throw new Error("Tên nhà cung cấp không được quá 120 ký tự.");
+      if (contactName.length > 120 || input.address.trim().length > 300 || input.notes.trim().length > 2000)
+        throw new Error("Thông tin liên hệ, địa chỉ hoặc ghi chú quá dài.");
+      if (phone && !/^[0-9 +().-]{8,20}$/.test(phone))
+        throw new Error("Số điện thoại nhà cung cấp chưa đúng định dạng.");
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        throw new Error("Email nhà cung cấp chưa đúng định dạng.");
+      if (
+        get(
+          "SELECT id FROM suppliers WHERE lower(name)=lower(?) AND id!=?",
+          name,
+          input.id || 0,
+        )
+      )
+        throw new Error("Tên nhà cung cấp này đã tồn tại.");
+      if (input.id) {
+        const existing = get<any>("SELECT id FROM suppliers WHERE id=?", input.id);
+        if (!existing) throw new Error("Không tìm thấy nhà cung cấp.");
+        run(
+          "UPDATE suppliers SET name=?, contact_name=?, phone=?, email=?, address=?, notes=?, updated_at=? WHERE id=?",
+          name,
+          contactName,
+          phone,
+          email,
+          input.address.trim(),
+          input.notes.trim(),
+          nowIso(),
+          input.id,
+        );
+        return done(`Đã cập nhật nhà cung cấp ${name}.`);
+      }
+      const result = run(
+        "INSERT INTO suppliers(name,contact_name,phone,email,address,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
+        name,
+        contactName,
+        phone,
+        email,
+        input.address.trim(),
+        input.notes.trim(),
+        nowIso(),
+        nowIso(),
+      );
+      return done(`Đã thêm nhà cung cấp ${name}.`, { id: result.lastInsertRowid });
+    }),
+  );
+}
+
+export async function setSupplierActive(id: number, active: boolean): Promise<R> {
+  return guard("UC-26", () =>
+    tx(() => {
+      const supplier = get<any>("SELECT id,name,active FROM suppliers WHERE id=?", id);
+      if (!supplier) throw new Error("Không tìm thấy nhà cung cấp.");
+      if (active && !supplier.active) {
+        run("UPDATE suppliers SET active=1, updated_at=? WHERE id=?", nowIso(), id);
+        return done(`Đã kích hoạt lại nhà cung cấp ${supplier.name}.`);
+      }
+      if (!active && supplier.active) {
+        run("UPDATE suppliers SET active=0, updated_at=? WHERE id=?", nowIso(), id);
+        return done(`Đã ngừng hợp tác với nhà cung cấp ${supplier.name}.`);
+      }
+      return done("Trạng thái nhà cung cấp không thay đổi.");
+    }),
+  );
+}
+
 export async function createPo(input: {
-  workshop: string;
+  supplierId: number;
   productId: number;
   color: string;
   cost: number;
@@ -301,7 +382,11 @@ export async function createPo(input: {
   return guard("UC-26", () =>
     tx(() => {
       const lines = Object.entries(input.lines).filter(([, q]) => q > 0);
-      if (!input.workshop.trim()) throw new Error("Nhập tên xưởng may.");
+      const supplier = get<any>(
+        "SELECT id,name FROM suppliers WHERE id=? AND active=1",
+        input.supplierId,
+      );
+      if (!supplier) throw new Error("Chọn một nhà cung cấp đang hoạt động.");
       if (!(input.cost > 0))
         throw new Error("Nhập đơn giá gia công lớn hơn 0.");
       if (!input.due.trim()) throw new Error("Nhập ngày hẹn giao.");
@@ -315,9 +400,10 @@ export async function createPo(input: {
         throw new Error("Size không hợp lệ với sản phẩm này.");
       const code = nextCode("PO", "purchase_orders");
       const r = run(
-        "INSERT INTO purchase_orders(code,workshop,product_id,color,cost,due,status,created_at) VALUES(?,?,?,?,?,?,0,?)",
+        "INSERT INTO purchase_orders(code,workshop,supplier_id,product_id,color,cost,due,status,created_at) VALUES(?,?,?,?,?,?,?,0,?)",
         code,
-        input.workshop.trim(),
+        supplier.name,
+        supplier.id,
         input.productId,
         input.color,
         input.cost,
@@ -331,7 +417,7 @@ export async function createPo(input: {
           z,
           q,
         );
-      return done(`Đã tạo phiếu ${code} gửi ${input.workshop.trim()}.`);
+      return done(`Đã tạo phiếu ${code} gửi ${supplier.name}.`);
     }),
   );
 }
@@ -773,6 +859,68 @@ export async function packOrder(
 }
 
 // ---------- UC-33, UC-34 Đổi trả ----------
+const RETURN_REASONS = ["Đổi size", "Đổi màu", "Nghi hàng lỗi", "Khách không ưng"];
+
+export async function requestReturn(
+  orderCode: string,
+  sku: string,
+  reason: string,
+): Promise<R> {
+  return guard("UC-33", () =>
+    tx(() => {
+      if (!RETURN_REASONS.includes(reason))
+        throw new Error("Chọn lý do đổi trả hợp lệ.");
+      const o = get<any>(
+        "SELECT * FROM orders WHERE code=? AND status=3",
+        orderCode,
+      );
+      if (!o) throw new Error("Chỉ nhận đổi trả cho đơn đã giao.");
+      if (!get("SELECT 1 FROM order_lines WHERE order_id=? AND sku=?", o.id, sku))
+        throw new Error("Sản phẩm không thuộc đơn này.");
+      if (
+        get(
+          "SELECT 1 FROM return_tickets WHERE order_code=? AND sku=? AND status IN ('Chờ nhận hàng','Chờ kiểm tra')",
+          orderCode,
+          sku,
+        )
+      )
+        throw new Error("Sản phẩm này đã có phiếu đổi trả đang xử lý.");
+      run(
+        "INSERT INTO return_tickets(order_code,user_id,sku,reason,status,created_at) VALUES(?,?,?,?,?,?)",
+        orderCode,
+        o.user_id,
+        sku,
+        reason,
+        "Chờ nhận hàng",
+        nowIso(),
+      );
+      return done(
+        `Đã tạo yêu cầu đổi trả ${sku} cho đơn ${orderCode}. Chờ nhận hàng về.`,
+      );
+    }),
+  );
+}
+
+export async function markReturnReceived(id: number): Promise<R> {
+  return guard("UC-33", () =>
+    tx(() => {
+      const ticket = get<any>(
+        "SELECT * FROM return_tickets WHERE id=? AND status='Chờ nhận hàng'",
+        id,
+      );
+      if (!ticket)
+        throw new Error("Phiếu không ở trạng thái chờ nhận hàng.");
+      run(
+        "UPDATE return_tickets SET status='Chờ kiểm tra' WHERE id=?",
+        ticket.id,
+      );
+      return done(
+        `Đã nhận hàng về phiếu ${ticket.sku} (đơn ${ticket.order_code}). Chuyển sang kiểm định.`,
+      );
+    }),
+  );
+}
+
 export async function receiveReturn(
   orderCode: string,
   sku: string,
