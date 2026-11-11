@@ -40,7 +40,7 @@ Endpoint khách hàng: `POST /api/orders/{orderCode}/payment-confirmation`. Endp
 ## Cấu trúc
 
 - `app/(shop)` cửa hàng: trang chủ, danh mục + lọc, chi tiết sản phẩm, giỏ hàng, thanh toán, tài khoản, đăng nhập/đăng ký, tư vấn
-- `app/admin` quản trị: tổng quan theo vai trò, đơn hàng, sản phẩm, khách hàng, tư vấn phối đồ, 6 mục kho (`app/admin/kho/*`), tài khoản người dùng, báo cáo doanh thu, đổi mật khẩu
+- `app/admin` quản trị: tổng quan theo vai trò, đơn hàng, sản phẩm, khách hàng, tư vấn phối đồ, quản lý kho (`app/admin/kho/*`), tài khoản người dùng, báo cáo doanh thu, đổi mật khẩu
 - `app/actions` Server Actions (auth, đặt hàng, toàn bộ nghiệp vụ admin/kho). Mỗi action kiểm tra quyền theo mã use case ở máy chủ.
 - `lib/permissions.ts` ma trận phân quyền 5 vai trò (mục 3.2 đặc tả v3.0); `lib/nav.ts` menu quản trị lọc theo quyền
 - `lib/auth.ts` phiên đăng nhập 7 ngày lưu trong bảng `sessions`; khóa tài khoản hoặc đổi mật khẩu hủy phiên ngay
@@ -55,6 +55,7 @@ Endpoint khách hàng: `POST /api/orders/{orderCode}/payment-confirmation`. Endp
 - Mọi thay đổi tồn kho ghi vào `inventory_logs`, kèm người thực hiện và mã chứng từ.
 - Lệnh giữ không bị xóa mà chuyển trạng thái: Đang giữ, Đã chốt mua, Đã nhả, Hết hạn tự nhả.
 - Quản trị → Sản phẩm (admin) chỉ quản lý thông tin chung. SKU và tồn đầu kỳ do nhân viên tạo ở Tồn kho và SKU; tồn chỉ thay đổi qua nhập xưởng, xuất kho, điều chuyển, đổi trả, giữ hàng và bán capsule.
+- Luồng nhà cung cấp: nhân viên tạo hồ sơ nhà cung cấp, chọn đối tác khi lập phiếu đặt may, theo dõi tiến độ giao/QC ở Đặt may và nhập kho, và xem lịch sử PO trong hồ sơ nhà cung cấp. Ngừng hợp tác sẽ giữ nguyên lịch sử và không cho chọn đối tác đó cho PO mới.
 
 ## Chưa làm (cần tích hợp ngoài)
 

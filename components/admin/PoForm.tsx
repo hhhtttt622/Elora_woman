@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRun } from './Flash';
 import { createPo } from '@/app/actions/admin';
 import { COLORS, fmt, sizeText } from '@/lib/util';
@@ -7,9 +8,9 @@ import { COLORS, fmt, sizeText } from '@/lib/util';
 const SIZES_ACCESSORY = ['FS'];
 const SIZES_STANDARD = ['S', 'M', 'L', 'XL'];
 
-export default function PoForm({ products, init }: { products: { id: number; name: string; category: string }[]; init: { pid: string; color: string; size: string } }) {
+export default function PoForm({ products, suppliers, init }: { products: { id: number; name: string; category: string }[]; suppliers: { id: number; name: string }[]; init: { pid: string; color: string; size: string } }) {
   const { run, pending } = useRun();
-  const [f, setF] = useState({ workshop: '', pid: init.pid || String(products[0]?.id), color: init.color || 'Be', cost: '', due: '' });
+  const [f, setF] = useState({ supplierId: String(suppliers[0]?.id || ''), pid: init.pid || String(products[0]?.id), color: init.color || 'Be', cost: '', due: '' });
   const [qty, setQty] = useState<Record<string, string>>(() => (init.size ? { [init.size]: '10' } : {}));
   const [err, setErr] = useState('');
   const p = products.find((x) => String(x.id) === f.pid);
@@ -19,9 +20,9 @@ export default function PoForm({ products, init }: { products: { id: number; nam
   return (
     <section className="card"><h2 className="h2">Tạo phiếu gửi nhà may</h2>
       <form onSubmit={async (e) => { e.preventDefault(); const lines: Record<string, number> = {}; sizes.forEach((z) => { const n = parseInt(qty[z], 10); if (n > 0) lines[z] = n; });
-        const r = await run(createPo({ workshop: f.workshop, productId: parseInt(f.pid, 10), color: f.color, cost: parseInt(f.cost, 10) || 0, due: f.due, lines })); setErr(r.error || ''); if (r.ok) { setQty({}); setF((prev) => ({ ...prev, workshop: '', cost: '', due: '' })); } }} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        const r = await run(createPo({ supplierId: parseInt(f.supplierId, 10), productId: parseInt(f.pid, 10), color: f.color, cost: parseInt(f.cost, 10) || 0, due: f.due, lines })); setErr(r.error || ''); if (r.ok) { setQty({}); setF((prev) => ({ ...prev, cost: '', due: '' })); } }} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="grid">
-          <div className="fl"><label className="lbl" htmlFor="po-ws">Xưởng may</label><input id="po-ws" className="fld" value={f.workshop} onChange={set('workshop')} placeholder="Tên xưởng" /></div>
+          <div className="fl"><label className="lbl" htmlFor="po-supplier">Nhà cung cấp / xưởng may</label><select id="po-supplier" className="fld" value={f.supplierId} onChange={set('supplierId')} required><option value="">Chọn nhà cung cấp</option>{suppliers.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>{!suppliers.length && <Link className="textbtn" href="/admin/kho/nha-cung-cap">Thêm nhà cung cấp trước khi tạo phiếu</Link>}</div>
           <div className="fl"><label className="lbl" htmlFor="po-pid">Mẫu thiết kế (sản phẩm)</label><select id="po-pid" className="fld" value={f.pid} onChange={(e) => { setF((prev) => ({ ...prev, pid: e.target.value })); setQty({}); }}>{products.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
           <div className="fl"><label className="lbl" htmlFor="po-color">Màu</label><select id="po-color" className="fld" value={f.color} onChange={set('color')}>{COLORS.map((c) => <option key={c}>{c}</option>)}</select></div>
           <div className="fl"><label className="lbl" htmlFor="po-cost">Đơn giá gia công (đồng)</label><input id="po-cost" type="number" className="fld" value={f.cost} onChange={set('cost')} /></div>
@@ -29,7 +30,7 @@ export default function PoForm({ products, init }: { products: { id: number; nam
         </div>
         <span className="lbl">Số lượng theo size</span>
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(110px,1fr))' }}>{sizes.map((z) => <div key={z} className="fl"><label className="lbl" htmlFor={`poq-${z}`} style={{ fontWeight: 500 }}>Size {sizeText(z)}</label><input id={`poq-${z}`} type="number" className="fld" value={qty[z] || ''} onChange={(e) => setQty((prev) => ({ ...prev, [z]: e.target.value }))} placeholder="0" /></div>)}</div>
-        <div className="row"><span style={{ fontSize: 14, padding: '10px 14px', background: '#F6EEEF', border: '1px solid var(--line)' }}>Tổng {total} sản phẩm, chi phí gia công {fmt(total * (parseInt(f.cost, 10) || 0))}</span><button className="btn" disabled={pending}>Gửi phiếu cho xưởng</button></div>
+        <div className="row"><span style={{ fontSize: 14, padding: '10px 14px', background: '#F6EEEF', border: '1px solid var(--line)' }}>Tổng {total} sản phẩm, chi phí gia công {fmt(total * (parseInt(f.cost, 10) || 0))}</span><button className="btn" disabled={pending || !suppliers.length}>Gửi phiếu cho nhà cung cấp</button></div>
         {err && <p className="err" role="alert">{err}</p>}
       </form></section>);
 }

@@ -41,8 +41,12 @@ CREATE TABLE IF NOT EXISTS holds(
 CREATE TABLE IF NOT EXISTS capsules(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')));
 CREATE TABLE IF NOT EXISTS capsule_items(
   id INTEGER PRIMARY KEY AUTOINCREMENT, capsule_id INTEGER NOT NULL REFERENCES capsules(id) ON DELETE CASCADE, sku TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS suppliers(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, contact_name TEXT NOT NULL DEFAULT '', phone TEXT NOT NULL DEFAULT '',
+  email TEXT NOT NULL DEFAULT '', address TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '',
+  active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')));
 CREATE TABLE IF NOT EXISTS purchase_orders(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL UNIQUE, workshop TEXT NOT NULL, product_id INTEGER NOT NULL,
+  id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL UNIQUE, workshop TEXT NOT NULL, supplier_id INTEGER REFERENCES suppliers(id), product_id INTEGER NOT NULL,
   color TEXT NOT NULL, cost INTEGER NOT NULL, due TEXT NOT NULL, status INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (datetime('now')),
   received_at TEXT);
 CREATE TABLE IF NOT EXISTS po_lines(
@@ -114,6 +118,7 @@ export const MIGRATIONS: [string, string, string][] = [
   ["holds", "created_at", "TEXT"],
   ["holds", "status", "TEXT NOT NULL DEFAULT 'Đang giữ'"],
   ["capsules", "created_at", "TEXT"],
+  ["purchase_orders", "supplier_id", "INTEGER REFERENCES suppliers(id)"],
   ["purchase_orders", "received_at", "TEXT"],
   ["po_lines", "recv", "INTEGER"],
   ["po_lines", "bad", "INTEGER"],

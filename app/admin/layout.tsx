@@ -39,7 +39,6 @@ export default async function AdminLayout({
     '/admin/kho/dieu-chuyen': counts.c_transfers || 0,
     '/admin/kho/giu-hang': counts.c_holds || 0,
     '/admin/don-hang/xuat-kho': counts.c_orders_pack || 0,
-    '/admin/don-hang/doi-tra': counts.c_returns || 0,
     '/admin/kho/doi-tra': counts.c_returns || 0,
   };
   const nav = ADMIN_NAV.map((g) => ({
