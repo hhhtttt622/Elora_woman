@@ -27,7 +27,7 @@ export default async function AdminLayout({
       (SELECT COUNT(*) FROM transfers WHERE status='Đang chuyển') AS c_transfers,
       (SELECT COUNT(*) FROM holds h JOIN consults c ON c.id=h.consult_id WHERE h.status=? AND h.expires_at > ?${mine}) AS c_holds,
       (SELECT COUNT(*) FROM orders WHERE status=1) AS c_orders_pack,
-      (SELECT COUNT(*) FROM return_tickets WHERE status='Chờ kiểm tra') AS c_returns
+      (SELECT COUNT(*) FROM return_tickets WHERE status IN ('Chờ nhận hàng','Chờ kiểm tra')) AS c_returns
   `, HOLD_STATUS.active, nowIso()) || {};
 
   // số việc đang chờ trên menu theo vai trò (UC-20)
@@ -40,6 +40,7 @@ export default async function AdminLayout({
     '/admin/kho/giu-hang': counts.c_holds || 0,
     '/admin/don-hang/xuat-kho': counts.c_orders_pack || 0,
     '/admin/don-hang/doi-tra': counts.c_returns || 0,
+    '/admin/kho/doi-tra': counts.c_returns || 0,
   };
   const nav = ADMIN_NAV.map((g) => ({
     group: g.group,

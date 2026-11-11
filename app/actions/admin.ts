@@ -995,3 +995,25 @@ export async function setAccountLocked(
     );
   });
 }
+
+// ---------- đổi trả: quy trình nhận hàng về (Huyền Yan) ----------
+// Bước 1: khách/CSKH tạo yêu cầu đổi trả -> "Chờ nhận hàng".
+export async function requestReturn(orderCode: string, sku: string, reason: string): Promise<R> {
+  return guard("UC-33", () => {
+    const o = get<any>('SELECT * FROM orders WHERE code=? AND status=3', orderCode);
+    if (!o) throw new Error('Chỉ nhận đổi trả cho đơn đã giao.');
+    if (!get('SELECT 1 FROM order_lines WHERE order_id=? AND sku=?', o.id, sku)) throw new Error('Sản phẩm không thuộc đơn này.');
+    if (get("SELECT 1 FROM return_tickets WHERE order_code=? AND sku=? AND status IN ('Chờ nhận hàng','Chờ kiểm tra')", orderCode, sku)) throw new Error('Sản phẩm này đã có phiếu đổi trả đang xử lý.');
+    run("INSERT INTO return_tickets(order_code,user_id,sku,reason,status,created_at) VALUES(?,?,?,?,?,?)", orderCode, o.user_id, sku, reason, 'Chờ nhận hàng', nowIso());
+    return done(`Đã tạo yêu cầu đổi trả ${sku} cho đơn ${orderCode}. Chờ nhận hàng về.`);
+  });
+}
+// Bước 2: kho xác nhận đã nhận hàng gửi trả -> "Chờ kiểm tra" (sau đó dùng Nhập lại kho / Chuyển sửa chữa).
+export async function markReturnReceived(id: number): Promise<R> {
+  return guard("UC-33", () => {
+    const r = get<any>("SELECT * FROM return_tickets WHERE id=? AND status='Chờ nhận hàng'", id);
+    if (!r) throw new Error('Phiếu không ở trạng thái chờ nhận hàng.');
+    run("UPDATE return_tickets SET status='Chờ kiểm tra' WHERE id=?", id);
+    return done(`Đã nhận hàng về phiếu ${r.sku} (đơn ${r.order_code}). Chuyển sang kiểm định.`);
+  });
+}

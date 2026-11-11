@@ -4,7 +4,7 @@ import { getVariants } from '@/lib/inventory';
 import { requirePage } from '@/lib/auth';
 import { dmy, norm, sizeText } from '@/lib/util';
 import { hrefWith, paginate } from '@/lib/url';
-import { returnRestock, returnRepair } from '@/app/actions/admin';
+import { returnRestock, returnRepair, markReturnReceived } from '@/app/actions/admin';
 import { PageContainer, PageHeader } from '@/components/layout/Page';
 import DataTable from '@/components/ui/DataTable';
 import { FilterChips, Pagination, SearchBar, Tabs } from '@/components/ui/Navigation';
@@ -89,7 +89,9 @@ export default async function Returns({ searchParams }: { searchParams: SP }) {
             { key: 'reason', header: 'Lý do', cell: (r) => r.reason },
             { key: 'date', header: 'Ngày nhận', className: 'nowrap', cell: (r) => dmy(r.created_at) },
             { key: 'st', header: 'Trạng thái', cell: (r) => <StatusBadge domain="return" value={r.status} /> },
-            { key: 'act', header: 'Xử lý', label: '', cell: (r) => (r.status === WAITING ? (
+            { key: 'act', header: 'Xử lý', label: '', cell: (r) => (r.status === 'Chờ nhận hàng' ? (
+              <Act action={markReturnReceived} args={[r.id]} size="sm" primary label={`Xác nhận đã nhận hàng ${r.sku} đơn ${r.order_code}`}>Xác nhận đã nhận hàng</Act>
+            ) : r.status === WAITING ? (
               <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
                 <Act action={returnRestock} args={[r.id]} size="sm" label={`Nhập lại kho ${r.sku}`} confirm={{ title: `Nhập lại ${r.sku} vào Kho Online?`, message: 'Chỉ chọn khi sản phẩm còn nguyên tem mác. Hàng được cộng vào Kho Online để bán lại và phiếu sẽ đóng.', confirmLabel: 'Nhập lại kho' }}>Nhập lại kho</Act>
                 <Act action={returnRepair} args={[r.id]} size="sm" label={`Chuyển sửa chữa ${r.sku}`} confirm={{ title: `Chuyển ${r.sku} sang kho sửa chữa?`, message: 'Chọn khi sản phẩm bị lỗi. Hàng chuyển sang kho thanh lý và sửa chữa, không tính vào tồn bán được, và phiếu sẽ đóng.', confirmLabel: 'Chuyển sửa chữa' }}>Chuyển sửa chữa</Act>
