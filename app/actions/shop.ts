@@ -4,17 +4,24 @@ import { get, run, tx } from '@/lib/db';
 import { requirePerm } from '@/lib/auth';
 import { availableOf, sweepHolds } from '@/lib/inventory';
 import { SHIPPING_FEE, nowIso, stampDay, pad } from '@/lib/util';
+import { getVietQrConfig, PAYMENT_STATUS, PAYMENT_WINDOW_MS } from '@/lib/payment';
 import type { Res } from './auth';
 
 // UC-08
 export async function placeOrderAction(input: { lines: { sku: string; qty: number }[]; name: string; phone: string; address: string; pay: string; note: string }): Promise<Res & { code?: string }> {
   let u;
   try { u = await requirePerm('UC-08'); } catch (e: any) { return { error: e.message }; }
+  if (!input || !Array.isArray(input.lines)) return { error: 'Thông tin đơn hàng không hợp lệ.' };
   if (!input.lines.length) return { error: 'Giỏ hàng đang trống.' };
-  if (input.name.trim().length < 2) return { error: 'Họ tên người nhận cần ít nhất 2 ký tự.' };
-  if (!/^[0-9 +]{9,14}$/.test(input.phone.trim())) return { error: 'Số điện thoại chưa đúng.' };
-  if (input.address.trim().length < 8) return { error: 'Địa chỉ giao hàng cần ít nhất 8 ký tự.' };
+  if (typeof input.name !== 'string' || input.name.trim().length < 2) return { error: 'Họ tên người nhận cần ít nhất 2 ký tự.' };
+  if (typeof input.phone !== 'string' || !/^[0-9 +]{9,14}$/.test(input.phone.trim())) return { error: 'Số điện thoại chưa đúng.' };
+  if (typeof input.address !== 'string' || input.address.trim().length < 8) return { error: 'Địa chỉ giao hàng cần ít nhất 8 ký tự.' };
+  if (typeof input.note !== 'string') return { error: 'Ghi chú đơn hàng không hợp lệ.' };
   if (!['Thanh toán khi nhận hàng', 'Chuyển khoản'].includes(input.pay)) return { error: 'Chọn hình thức thanh toán.' };
+  const isTransfer = input.pay === 'Chuyển khoản';
+  const bank = isTransfer ? getVietQrConfig() : null;
+  if (isTransfer && !bank) return { error: 'Chưa cấu hình tài khoản VietQR. Vui lòng liên hệ cửa hàng hoặc chọn thanh toán khi nhận hàng.' };
+  const paymentDeadline = isTransfer ? new Date(Date.now() + PAYMENT_WINDOW_MS).toISOString() : null;
   sweepHolds();
   try {
     const code = tx(() => {
@@ -30,12 +37,18 @@ export async function placeOrderAction(input: { lines: { sku: string; qty: numbe
       }
       const n = (get<any>('SELECT COUNT(*) c FROM orders').c || 0) + 1;
       const code = `ELW-${stampDay()}-${pad(n % 1000)}${n > 999 ? n : ''}`;
-      const o = run('INSERT INTO orders(code,user_id,status,pay_method,shipping_fee,total,recv_name,recv_phone,address,note,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
-        code, u.id, 0, input.pay, SHIPPING_FEE, total, input.name.trim(), input.phone.trim(), input.address.trim(), input.note.trim(), nowIso());
+      const o = run(`INSERT INTO orders(
+        code,user_id,status,pay_method,shipping_fee,total,recv_name,recv_phone,address,note,created_at,
+        payment_status,payment_deadline,payment_bank_bin,payment_account_no,payment_account_name
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        code, u.id, 0, input.pay, SHIPPING_FEE, total, input.name.trim(), input.phone.trim(), input.address.trim(), input.note.trim(), nowIso(),
+        isTransfer ? PAYMENT_STATUS.pending : PAYMENT_STATUS.notRequired, paymentDeadline,
+        bank?.bankBin ?? null, bank?.accountNo ?? null, bank?.accountName ?? null);
       for (const it of items) run('INSERT INTO order_lines(order_id,sku,name,qty,price) VALUES(?,?,?,?,?)', o.lastInsertRowid, it.sku, it.name, it.qty, it.price);
       return code;
     });
     revalidatePath('/tai-khoan');
+    revalidatePath(`/thanh-toan/${code}`);
     return { ok: true, code, msg: 'Đặt hàng thành công.' };
   } catch (e: any) { return { error: e.message }; }
 }

@@ -63,6 +63,8 @@ export async function setOrderStatus(code: string, status: number): Promise<R> {
     const o = get<any>("SELECT * FROM orders WHERE code=?", code);
     if (!o) throw new Error("Không tìm thấy đơn.");
     if (status === o.status) return done("Không đổi.");
+    if (o.pay_method === "Chuyển khoản" && status >= 1 && o.payment_status !== "PAID")
+      throw new Error("Chỉ xác nhận hoặc xử lý giao đơn chuyển khoản sau khi nhân viên đã đối soát và xác nhận đã nhận tiền.");
     if (status === 2)
       throw new Error(
         "Đơn chỉ chuyển sang Đang giao khi đóng gói ở mục Xuất kho, để kho được trừ đúng.",
