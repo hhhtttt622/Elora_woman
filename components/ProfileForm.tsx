@@ -60,6 +60,12 @@ export default function ProfileForm({ u }: { u: any }) {
           {fe.phone && <span className="err">{fe.phone}</span>}
         </div>
         <div className="fl">
+          <label className="lbl" htmlFor="p-birthday">Ngày sinh</label>
+          <input id="p-birthday" name="birthday" type="date" className="fld" defaultValue={u.birthday || ''} max={new Date().toISOString().slice(0,10)} aria-invalid={!!fe.birthday} />
+          <span className="note">Dùng để xác định ưu đãi sinh nhật; thông tin này không hiển thị công khai.</span>
+          {fe.birthday && <span className="err">{fe.birthday}</span>}
+        </div>
+        <div className="fl">
           <label className="lbl" htmlFor="p-work">
             Môi trường làm việc
           </label>

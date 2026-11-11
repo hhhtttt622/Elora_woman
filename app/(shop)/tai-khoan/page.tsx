@@ -6,10 +6,11 @@ import PasswordForm from '@/components/PasswordForm';
 import { all, get } from '@/lib/db';
 import { sweepHoldsOnce } from '@/lib/inventory';
 import ProfileForm from '@/components/ProfileForm';
+import { customerPromotions } from '@/lib/promotions';
 import { ORDER_STATUS, HOLD_STATUS, fmt, dmy, dmyHm, hoursLeft, nowIso } from '@/lib/util';
 export const dynamic = 'force-dynamic';
 
-const TABS = [['info', 'Thông tin cá nhân'], ['orders', 'Lịch sử mua hàng'], ['track', 'Theo dõi đơn hàng'], ['style', 'Hồ sơ phong cách'], ['password', 'Đổi mật khẩu']];
+const TABS = [['info', 'Thông tin cá nhân'], ['orders', 'Lịch sử mua hàng'], ['track', 'Theo dõi đơn hàng'], ['offers', 'Ưu đãi của tôi'], ['style', 'Hồ sơ phong cách'], ['password', 'Đổi mật khẩu']];
 
 export default async function Account({ searchParams }: { searchParams: { tab?: string } }) {
   const s = await getUser();
@@ -19,7 +20,8 @@ export default async function Account({ searchParams }: { searchParams: { tab?: 
   sweepHoldsOnce();
   const tab = s.mustChangePw ? 'password' : TABS.some((t) => t[0] === searchParams.tab) ? searchParams.tab! : 'info';
   // Chỉ lấy cột cần hiển thị: `u` được truyền xuống ProfileForm (client), không được mang password_hash.
-  const u = get<any>('SELECT name, email, phone, size, liked_colors, work_env, height_cm, weight_kg FROM users WHERE id=?', s.id);
+  const u = get<any>('SELECT name, email, phone, size, liked_colors, work_env, height_cm, weight_kg, birthday FROM users WHERE id=?', s.id);
+  const offers = customerPromotions(s.id);
 
   const rawOrders = all<any>('SELECT * FROM orders WHERE user_id=? ORDER BY id DESC', s.id);
   const orderIds = rawOrders.map((o) => o.id);
@@ -68,6 +70,13 @@ export default async function Account({ searchParams }: { searchParams: { tab?: 
       {tab === 'info' && <ProfileForm u={u} />}
 
       {tab === 'password' && <PasswordForm forced={s.mustChangePw} />}
+
+      {tab === 'offers' && <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="card" style={{ maxWidth: 760, background: '#F6EEEF' }}><h2 className="h2">Ưu đãi của tôi</h2><p className="note">Mã ưu đãi được kiểm tra lại theo sản phẩm, giá trị đơn và lượt sử dụng khi thanh toán.</p><Link className="btn" href="/gio-hang">Đến giỏ hàng</Link></div>
+        {!u.birthday && <div className="card" style={{maxWidth:760}}>Thêm ngày sinh trong <Link href="/tai-khoan?tab=info" className="textbtn">Thông tin cá nhân</Link> để kiểm tra ưu đãi sinh nhật.</div>}
+        {offers.map((p:any)=><article className="card" key={p.id} style={{maxWidth:760}}><div style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><b>{p.name}</b><span className={'badge '+(p.customer_status==='available'?'dark':'sand')}>{p.customer_status==='available'?'Có thể thử áp dụng':p.customer_status==='used'?'Đã sử dụng':p.customer_status==='reserved'?'Đang giữ cho đơn hàng':p.customer_status==='expired'?'Hết hạn':p.customer_status==='birthday_wait'?'Ngoài kỳ sinh nhật':'Chưa hoạt động'}</span></div><b className="disp" style={{fontSize:24}}>{p.code}</b><span>{p.kind==='percent'?`Giảm ${p.value}%`:`Giảm ${fmt(p.value)}`}{p.max_discount?` · tối đa ${fmt(p.max_discount)}`:''} · đơn tối thiểu {fmt(p.min_order)}</span><span className="note">{p.description || 'Xem điều kiện áp dụng tại giỏ hàng.'}</span><span className="note">Hạn dùng đến {new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',dateStyle:'short',timeStyle:'short'}).format(new Date(p.ends_at))} (giờ Việt Nam)</span></article>)}
+        {offers.length===0&&<div className="card" style={{maxWidth:760}}>Hiện chưa có ưu đãi. Các chương trình đang hoạt động sẽ xuất hiện tại đây.</div>}
+      </section>}
 
       {tab === 'orders' && (orders.length === 0 ? <div className="card" style={{ background: '#F6EEEF' }}>Bạn chưa có đơn hàng nào.</div> :
         <div className="scroll"><table className="tb" style={{ minWidth: 720 }}><caption>Các đơn đã đặt</caption>

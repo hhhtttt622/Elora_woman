@@ -51,8 +51,19 @@ export async function updateProfileAction(_: Res, f: FormData): Promise<Res> {
   if (name.length < 2) return { error: 'Họ tên cần ít nhất 2 ký tự.', fields: { name: 'Họ tên cần ít nhất 2 ký tự.' } };
   if (phone && !PHONE.test(phone)) return { error: 'Số điện thoại chưa đúng định dạng.', fields: { phone: 'Số điện thoại chưa đúng định dạng.' } };
   const h = parseInt(s(f, 'height'), 10), w = parseInt(s(f, 'weight'), 10);
-  run('UPDATE users SET name=?, phone=?, height_cm=?, weight_kg=?, size=?, liked_colors=?, work_env=? WHERE id=?',
-    name, phone, h > 0 ? h : null, w > 0 ? w : null, s(f, 'size') || 'M', f.getAll('colors').join(', '), s(f, 'workEnv'), u.id);
+  const birthday = s(f, 'birthday');
+  if (birthday) {
+    const [year, month, day] = birthday.split('-').map(Number);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthday) || Number.isNaN(+parsed) || parsed.toISOString().slice(0, 10) !== birthday || birthday > today) return { error: 'Ngày sinh không hợp lệ hoặc đang ở tương lai.', fields: { birthday: 'Nhập ngày sinh hợp lệ.' } };
+  }
+  const currentBirthday = get<any>('SELECT birthday FROM users WHERE id=?', u.id)?.birthday || '';
+  if (currentBirthday && currentBirthday !== birthday && get('SELECT 1 FROM promotion_redemptions r JOIN promotions p ON p.id=r.promotion_id WHERE r.user_id=? AND p.occasion=? AND r.status!=? LIMIT 1', u.id, 'birthday', 'released')) {
+    return { error: 'Ngày sinh đã được dùng để nhận ưu đãi trong chu kỳ hiện tại và chưa thể thay đổi.', fields: { birthday: 'Liên hệ ELORA để cập nhật ngày sinh.' } };
+  }
+  run('UPDATE users SET name=?, phone=?, height_cm=?, weight_kg=?, size=?, liked_colors=?, work_env=?, birthday=? WHERE id=?',
+    name, phone, h > 0 ? h : null, w > 0 ? w : null, s(f, 'size') || 'M', f.getAll('colors').join(', '), s(f, 'workEnv'), birthday || null, u.id);
   return { ok: true, msg: 'Đã lưu thông tin.' };
 }
 

@@ -138,6 +138,7 @@ export function ProductCard({ p }: { p: ProductView }) {
         <span className="pname" style={{ fontSize: 14, fontWeight: 500 }}>
           {p.name}
         </span>
+        {p.promotionLabels.map((label) => <span key={label} className="badge pink" style={{alignSelf:'flex-start'}}>{label}</span>)}
         <span className="price">
           {p.salePrice ? (
             <>

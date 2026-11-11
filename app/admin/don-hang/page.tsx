@@ -49,7 +49,7 @@ export default async function Orders({ searchParams }: { searchParams: SP }) {
       <PageHeader eyebrow="Bán hàng" title="Đơn hàng" description='Đơn chỉ chuyển sang "Đang giao" khi đóng gói ở mục Xuất kho, để kho được trừ đúng.' />
 
       <div className="ui-toolbar">
-        <FilterChips label="Lọc theo trạng thái" current={String(f)} items={[-1, 0, 1, 2, 3].map((k) => ({
+        <FilterChips label="Lọc theo trạng thái" current={String(f)} items={[-1, 0, 1, 2, 3, 4].map((k) => ({
           key: String(k), label: `${k === -1 ? 'Tất cả' : ORDER_STATUS[k]} (${cnt(k)})`, href: hrefWith(BASE, searchParams, { s: k === -1 ? null : k, page: null, order: null }),
         }))} />
         <SearchBar id="oq" label="Tìm đơn" placeholder="Mã đơn hoặc tên khách" defaultValue={searchParams.q} params={searchParams} keep={['s']} />
@@ -78,7 +78,7 @@ export default async function Orders({ searchParams }: { searchParams: SP }) {
       {sel && (
         <UrlDrawer key={sel.code} param="order" eyebrow={`Đơn hàng · ${dmyHm(sel.created_at)}`} title={sel.code}>
           <Section title="Trạng thái">
-            <Steps steps={ORDER_STATUS} current={sel.status} />
+            {sel.status === 4 ? <span className="badge pink">Đơn đã hủy</span> : <Steps steps={ORDER_STATUS.slice(0,4)} current={sel.status} />}
             <OrderStatusForm code={sel.code} status={sel.status} />
             {sel.status === 1 && <p className="note">Để chuyển sang Đang giao, đóng gói đơn ở <Link className="textbtn" style={{ minHeight: 0 }} href={`/admin/don-hang/xuat-kho?o=${sel.code}`}>Xuất kho</Link>.</p>}
           </Section>
@@ -86,6 +86,7 @@ export default async function Orders({ searchParams }: { searchParams: SP }) {
             <ul className="list">
               {sel.lines.map((l: any) => <li key={l.id}><span>{l.qty} × {l.name}<br /><span className="note">{l.sku}</span></span><b>{fmt(l.qty * l.price)}</b></li>)}
               <li><span>Phí giao hàng</span><span>{fmt(sel.shipping_fee)}</span></li>
+              {sel.discount_amount > 0 && <li><span>{sel.promotion_name} ({sel.promotion_code})</span><span>−{fmt(sel.discount_amount)}</span></li>}
               <li style={{ fontSize: 16 }}><b>Tổng cộng</b><b>{fmt(sel.total)}</b></li>
             </ul>
           </Section>

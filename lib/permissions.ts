@@ -9,7 +9,7 @@ const MATRIX = {
   'UC-02': ['customer', 'stylist', 'staff'], 'UC-03': ['customer', 'stylist', 'staff'],
   'UC-04': ['customer'], 'UC-08': ['customer'], 'UC-09': ['customer'], 'UC-10': ['customer'], 'UC-11': ['customer'],
   'UC-12': ['stylist'], 'UC-13': ['stylist'], 'UC-14': ['stylist'], 'UC-15': ['stylist'], 'UC-16': ['stylist'],
-  'UC-17': ['staff'], 'UC-18': ['admin'], 'UC-19': ['staff', 'stylist'], 'UC-20': ['stylist', 'staff'],
+  'UC-17': ['staff'], 'UC-18': ['staff'], 'UC-19': ['staff', 'stylist'], 'UC-20': ['stylist', 'staff'],
   'UC-21': ['staff'], 'UC-22': ['staff'], 'UC-23': ['staff'], 'UC-24': ['admin'], 'UC-25': ['staff'],
   'UC-26': ['staff'], 'UC-27': ['staff'], 'UC-28': ['staff'], 'UC-29': ['staff'], 'UC-30': ['staff'], 'UC-31': ['staff'],
   'UC-32': ['staff'], 'UC-33': ['staff'], 'UC-34': ['staff'], 'UC-35': ['staff'], 'UC-36': ['admin'], 'UC-37': ['staff'],

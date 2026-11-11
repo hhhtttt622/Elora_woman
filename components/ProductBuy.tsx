@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/cart';
 import { COLOR_HEX, sizeText } from '@/lib/util';
 
-type V = { sku: string; color: string; size: string; available: number };
+type V = { sku: string; color: string; size: string; available: number; price: number; image?: string };
 type P = { id: number; slug: string; name: string; price: number; tone: string };
 const ORDER = ['S', 'M', 'L', 'XL', 'FS'];
 const ORDER_INDEX_MAP = new Map(ORDER.map((x, i) => [x, i]));
@@ -35,7 +35,7 @@ export default function ProductBuy({ p, variants, advice }: { p: P; variants: V[
     setMsg(''); setErr('');
     if (!size) { setErr('Chọn kích thước trước khi thêm vào giỏ.'); return; }
     if (!cur || cur.available < 1) { setErr('Phiên bản này đã hết hàng.'); return; }
-    add({ sku: cur.sku, productId: p.id, slug: p.slug, name: p.name, color, size, price: p.price, tone: p.tone });
+    add({ sku: cur.sku, productId: p.id, slug: p.slug, name: p.name, color, size, price: cur.price, tone: p.tone });
     if (go) router.push('/gio-hang'); else setMsg('Đã thêm vào giỏ hàng.');
   };
   return (
@@ -49,6 +49,8 @@ export default function ProductBuy({ p, variants, advice }: { p: P; variants: V[
           {sizes.map((s) => <button key={s} type="button" className="pill" aria-pressed={size === s} disabled={avail(s) < 1} onClick={() => { setSize(s); setErr(''); }}>{sizeText(s)}</button>)}
         </div>
         {size && cur && <p className="note" style={{ marginTop: 8 }}>{cur.available <= 3 ? `Chỉ còn ${cur.available} sản phẩm` : 'Còn hàng'} · Mã {cur.sku}</p>}</div>
+      {cur && cur.image && <img src={cur.image} alt={`Ảnh biến thể ${color}, size ${size}`} style={{ width: 120, height: 150, objectFit: 'cover' }} />}
+      {cur && cur.price !== p.price && <p className="note">Giá biến thể: <b>{new Intl.NumberFormat('vi-VN').format(cur.price)}đ</b></p>}
       {err && <p className="err" role="alert">{err}</p>}
       {msg && <p className="ok" role="status">{msg}</p>}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>

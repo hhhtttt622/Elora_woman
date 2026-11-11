@@ -5,41 +5,72 @@ import { can } from '@/lib/permissions';
 import { getVariants } from '@/lib/inventory';
 import { Act } from '@/components/admin/Flash';
 import { setOrderStatus } from '../actions/admin';
-import { HOLD_STATUS, fmt, dmy, dmyHm, hoursLeft, nowIso } from '@/lib/util';
+import { HOLD_STATUS, fmt, dmy, dmyHm, hoursLeft, nowIso, sizeText } from '@/lib/util';
+import { hrefWith } from '@/lib/url';
 import { PageContainer, PageHeader } from '@/components/layout/Page';
-import { Section, StatCard } from '@/components/ui/Display';
+import { DescriptionList } from '@/components/ui/Display';
 import DataTable from '@/components/ui/DataTable';
-import { EmptyState } from '@/components/ui/States';
+import { FilterChips } from '@/components/ui/Navigation';
 import StatusBadge from '@/components/ui/StatusBadge';
 export const dynamic = 'force-dynamic';
 
-/** Một hàng việc cần làm: tối đa 5 dòng, có lối "Xem tất cả" tới màn xử lý. */
-function Queue({ title, empty, more, total, children }: { title: string; empty: string; more: string; total: number; children: React.ReactNode }) {
+type SP = { period?: string; sort?: string };
+type Queue = { title: string; note: string; href: string; total: number; danger?: boolean; rows: React.ReactNode };
+
+const BASE = '/admin';
+const MAX_ROWS = 5;
+const MAX_CASH_ROWS = 10;
+const PERIODS = [['week', 'Tuần này'], ['month', 'Tháng này'], ['year', 'Năm nay']] as const;
+const PERIOD_LABEL = { week: 'tuần này', month: 'tháng này', year: 'năm nay' } as const;
+const SORTS = [['desc', 'Bán nhiều nhất'], ['asc', 'Bán ít nhất']] as const;
+
+function Row({ main, sub, action }: { main: React.ReactNode; sub: React.ReactNode; action: React.ReactNode }) {
+  return <li><span className="ov-row-text"><span className="ov-row-main">{main}</span><span className="note">{sub}</span></span>{action}</li>;
+}
+
+/** Một hàng trong sổ việc: bấm số hoặc tên để tới màn xử lý, bên phải là các việc cụ thể. */
+function QueueRow({ q }: { q: Queue }) {
   return (
-    <section className="ui-section" style={{ flex: '1 1 340px' }}>
-      <div className="ui-section-head"><h2 className="h2">{title}</h2>{total > 0 ? <Link href={more} className="textbtn" style={{ minHeight: 0 }}>Xem tất cả ({total})</Link> : null}</div>
-      {total === 0 ? <span className="note">{empty}</span> : <ul className="list">{children}</ul>}
+    <div className="ov-q">
+      <Link href={q.href} className="ov-q-head">
+        <b className={'ov-q-num' + (q.danger ? ' danger' : '')}>{q.total}</b>
+        <span><h3 className="ov-q-title">{q.title}</h3><span className="note">{q.note}</span></span>
+      </Link>
+      <div>
+        <ul className="ov-rows">{q.rows}</ul>
+        {q.total > MAX_ROWS && <Link href={q.href} className="textbtn" style={{ minHeight: 0 }}>Xem tất cả {q.total}</Link>}
+      </div>
+    </div>
+  );
+}
+
+/** Nhóm việc. Hàng không có việc thu lại thành một dòng để phần còn việc nổi lên. */
+function WorkGroup({ title, queues }: { title: string; queues: Queue[] }) {
+  const active = queues.filter((q) => q.total > 0);
+  const idle = queues.filter((q) => q.total === 0);
+  return (
+    <section className="ov-group">
+      <h2 className="ov-group-title">{title}</h2>
+      <div className="ov-panel">
+        {active.map((q) => <QueueRow key={q.title} q={q} />)}
+        {idle.length > 0 && <p className="note ov-idle">Không có việc ở: {idle.map((q) => q.title.toLowerCase()).join(', ')}.</p>}
+      </div>
     </section>
   );
 }
 
 // UC-20 Xem tổng quan công việc: mỗi vai trò thấy việc cần làm của mình
-type SP = { period?: string; sort?: string };
-const PERIOD_LABEL = { week: 'tuần này', month: 'tháng này', year: 'năm nay' } as const;
-
 export default async function Overview({ searchParams }: { searchParams: SP }) {
-  const u = await requirePage('UC-20', '/admin');
+  const u = await requirePage('UC-20', BASE);
   const sales = can(u.role, 'UC-17'), styling = can(u.role, 'UC-12'), admin = u.role === 'admin';
   const orders = sales ? all<any>('SELECT o.*, u.name uname FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.id DESC') : [];
   const pending: typeof orders = [];
   const toPack: typeof orders = [];
   const delivered: typeof orders = [];
-  if (sales) {
-    for (const o of orders) {
-      if (o.status === 0) pending.push(o);
-      else if (o.status === 1) toPack.push(o);
-      else if (o.status === 3) delivered.push(o);
-    }
+  for (const o of orders) {
+    if (o.status === 0) pending.push(o);
+    else if (o.status === 1) toPack.push(o);
+    else if (o.status === 3) delivered.push(o);
   }
   const qc = sales ? all<any>('SELECT p.code, pr.name pname, p.color FROM purchase_orders p JOIN products pr ON pr.id=p.product_id WHERE p.status=2') : [];
   const low = sales ? getVariants().filter((v) => v.available < v.minStock) : [];
@@ -79,87 +110,77 @@ export default async function Overview({ searchParams }: { searchParams: SP }) {
      GROUP BY COALESCE(p.id, ol.sku), COALESCE(p.name, ol.name)
      ORDER BY quantity ${direction}, amount ${direction} LIMIT 10`, ...periodIds).map((b, i) => ({ ...b, rank: i + 1 })) : [];
 
+  const orderQueues: Queue[] = [
+    { title: 'Đơn chờ xác nhận', note: 'Cần xác nhận trong ngày', href: '/admin/don-hang?s=0', total: pending.length,
+      rows: pending.slice(0, MAX_ROWS).map((o) => <Row key={o.id} main={<Link href={`/admin/don-hang?s=0&order=${o.code}`} className="ui-rowlink">{o.code}</Link>} sub={`${o.uname}, ${fmt(o.total)}, ${o.pay_method}`} action={<Act action={setOrderStatus} args={[o.code, 1]} size="sm" label={`Xác nhận đơn ${o.code}`}>Xác nhận</Act>} />) },
+    { title: 'Đơn chờ xuất kho', note: 'Đã xác nhận, chờ đóng gói', href: '/admin/don-hang/xuat-kho', total: toPack.length,
+      rows: toPack.slice(0, MAX_ROWS).map((o) => <Row key={o.id} main={o.code} sub={o.uname} action={<Link href={`/admin/don-hang/xuat-kho?o=${o.code}`} className="ghost ui-sm">Xuất kho</Link>} />) },
+  ];
+  const stockQueues: Queue[] = [
+    { title: 'Phiếu chờ kiểm hàng', note: 'Xưởng đã giao đến kho', href: '/admin/kho/dat-may', total: qc.length,
+      rows: qc.slice(0, MAX_ROWS).map((p) => <Row key={p.code} main={p.code} sub={`${p.pname}, ${p.color}`} action={<Link href={`/admin/kho/dat-may?qc=${p.code}`} className="ghost ui-sm">Kiểm hàng</Link>} />) },
+    { title: 'SKU dưới ngưỡng', note: 'Cần đặt may thêm', href: '/admin/kho/nhat-ky', total: low.length, danger: true,
+      rows: low.slice(0, MAX_ROWS).map((v) => <Row key={v.sku} main={`${v.productName}, ${v.color}, ${sizeText(v.size)}`} sub={<span className="ov-warn">Khả dụng {v.available}, ngưỡng {v.minStock}</span>} action={<Link href={`/admin/kho/dat-may?sku=${v.sku}`} className="ghost ui-sm" aria-label={`Đặt may ${v.sku}`}>Đặt may</Link>} />) },
+  ];
+  const styleQueues: Queue[] = [
+    { title: 'Yêu cầu tư vấn mới', note: 'Chưa có stylist nhận', href: '/admin/tu-van', total: fresh.length,
+      rows: fresh.slice(0, MAX_ROWS).map((c) => <Row key={c.id} main={c.uname} sub={`${dmy(c.created_at)}, ${c.occasions}`} action={<Link href={`/admin/tu-van?id=${c.id}`} className="ghost ui-sm">Xem và nhận</Link>} />) },
+    { title: admin ? 'Yêu cầu đang phối' : 'Yêu cầu bạn đang phối', note: 'Cần soạn và gửi set', href: '/admin/tu-van', total: working.length,
+      rows: working.slice(0, MAX_ROWS).map((c) => <Row key={c.id} main={c.uname} sub={c.occasions} action={<Link href={`/admin/tu-van?id=${c.id}`} className="ghost ui-sm">Soạn set</Link>} />) },
+    { title: 'Lệnh giữ sắp hết hạn', note: 'Còn từ 6 giờ trở xuống', href: '/admin/kho/giu-hang', total: expiring.length, danger: true,
+      rows: expiring.slice(0, MAX_ROWS).map((h) => <Row key={h.id} main={h.sku} sub={<>{h.uname} <StatusBadge domain="hold" value={hoursLeft(h.expires_at)} /></>} action={<Link href="/admin/kho/giu-hang" className="ghost ui-sm">Xử lý</Link>} />) },
+  ];
+  const groups = [
+    ...(sales ? [{ title: 'Đơn hàng', queues: orderQueues }, { title: 'Kho', queues: stockQueues }] : []),
+    ...(styling ? [{ title: 'Tư vấn', queues: styleQueues }] : []),
+  ];
+  let waiting = 0;
+  for (const g of groups) for (const q of g.queues) waiting += q.total;
+
   return (
     <PageContainer>
-      <PageHeader eyebrow="Tổng quan" title="Việc cần làm" description={`Xin chào ${u.name}. Bấm vào một chỉ số hoặc một dòng để đi tới màn xử lý.`} />
-      <div className="kpis">
-        {sales && <>
-          <StatCard label="Đơn chờ xác nhận" value={pending.length} note="Cần xác nhận trong ngày" href="/admin/don-hang?s=0" />
-          <StatCard label="Đơn chờ xuất kho" value={toPack.length} note="Đã xác nhận, chờ đóng gói" href="/admin/don-hang/xuat-kho" />
-          <StatCard label="Phiếu chờ kiểm hàng" value={qc.length} note="Xưởng đã giao đến kho" href="/admin/kho/dat-may" />
-          <StatCard label="SKU dưới ngưỡng" value={low.length} note="Cần đặt may thêm" href="/admin/kho/nhat-ky" danger={low.length > 0} />
-        </>}
-        {styling && <>
-          <StatCard label="Yêu cầu tư vấn mới" value={fresh.length} note="Chưa có stylist nhận" href="/admin/tu-van" />
-          <StatCard label={admin ? 'Yêu cầu đang phối' : 'Yêu cầu bạn đang phối'} value={working.length} note="Cần soạn và gửi set" href="/admin/tu-van" />
-          <StatCard label="Lệnh giữ sắp hết hạn" value={expiring.length} note="Còn từ 6 giờ trở xuống" href="/admin/kho/giu-hang" danger={expiring.length > 0} />
-        </>}
-        {admin && <StatCard label="Doanh thu đơn đã giao" value={fmt(periodRevenue)} note={`${periodDelivered.length} đơn đã giao trong ${PERIOD_LABEL[period]}`} href="#tai-chinh" />}
-      </div>
+      <PageHeader title={waiting ? `Có ${waiting} việc đang chờ` : 'Không có việc nào đang chờ'} description={`Xin chào ${u.name}. Bấm vào số để xem đầy đủ, hoặc xử lý ngay ở từng dòng.`} />
+
+      {groups.map((g) => <WorkGroup key={g.title} title={g.title} queues={g.queues} />)}
 
       {admin && (
-        <div id="tai-chinh" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Section title="Doanh thu đơn đã giao" actions={
-            <form method="get" className="row" aria-label="Lọc doanh thu và sản phẩm bán chạy" style={{ alignItems: 'flex-end' }}>
-              <div className="fl"><label className="lbl" htmlFor="ov-period">Khoảng thời gian</label><select id="ov-period" name="period" className="fld" defaultValue={period}><option value="week">Tuần này</option><option value="month">Tháng này</option><option value="year">Năm nay</option></select></div>
-              <div className="fl"><label className="lbl" htmlFor="ov-sort">Xếp hạng bán chạy</label><select id="ov-sort" name="sort" className="fld" defaultValue={sort}><option value="desc">Số lượng bán cao đến thấp</option><option value="asc">Số lượng bán thấp đến cao</option></select></div>
-              <button className="btn">Lọc</button>
-            </form>}>
-            <p className="note" style={{ margin: 0 }}>Tính theo ngày giao từ {dmy(startIso)} đến {dmy(endIso)}. Tổng thu gồm tiền hàng và phí giao hàng. Xem theo khoảng ngày tùy chọn ở <Link href="/admin/bao-cao" className="textbtn" style={{ minHeight: 0 }}>Báo cáo doanh thu</Link>.</p>
-            <div className="kpis">
-              <StatCard label="Tiền hàng" value={fmt(periodRevenue - periodShipping)} note="Giá trị sản phẩm đã giao" />
-              <StatCard label="Phí giao hàng" value={fmt(periodShipping)} note="Thu từ các đơn trong kỳ" />
-              <StatCard label="Tổng thu" value={fmt(periodRevenue)} note={`${periodDelivered.length} đơn đã giao`} />
-              <StatCard label="Giá trị đơn trung bình" value={fmt(periodDelivered.length ? periodRevenue / periodDelivered.length : 0)} note="Tổng thu chia số đơn" />
+        <section id="tai-chinh" className="ov-group">
+          <div className="ov-group-head">
+            <h2 className="ov-group-title">Doanh thu</h2>
+            <FilterChips label="Khoảng thời gian" current={period} items={PERIODS.map(([k, l]) => ({ key: k, label: l, href: hrefWith(BASE, searchParams, { period: k === 'month' ? null : k }) }))} />
+          </div>
+          <div className="ov-panel ov-fin">
+            <div className="ov-fin-total">
+              <b>{fmt(periodRevenue)}</b>
+              <span className="note">{periodDelivered.length ? `${periodDelivered.length} đơn đã giao ${PERIOD_LABEL[period]}` : `Chưa có đơn nào giao ${PERIOD_LABEL[period]}`}, từ {dmy(startIso)} đến {dmy(endIso)}</span>
+              <Link href="/admin/bao-cao" className="textbtn" style={{ minHeight: 0 }}>Chọn khoảng ngày khác</Link>
             </div>
-          </Section>
-          {periodDelivered.length === 0 ? <EmptyState title="Không có đơn đã giao trong khoảng thời gian này" /> : <>
-            <DataTable rows={periodDelivered} rowKey={(o) => o.id} minWidth={960} mobile="cards" caption="Dòng tiền theo đơn đã giao" columns={[
+            {periodDelivered.length > 0 && <DescriptionList min={150} items={[
+              ['Tiền hàng', fmt(periodRevenue - periodShipping)],
+              ['Phí giao hàng', fmt(periodShipping)],
+              ['Giá trị đơn trung bình', fmt(periodRevenue / periodDelivered.length)],
+            ]} />}
+          </div>
+          {periodDelivered.length > 0 && <>
+            <DataTable rows={periodDelivered.slice(0, MAX_CASH_ROWS)} rowKey={(o) => o.id} minWidth={860} mobile="cards" caption={periodDelivered.length > MAX_CASH_ROWS ? `Dòng tiền của ${MAX_CASH_ROWS} đơn mới nhất trong ${periodDelivered.length} đơn` : 'Dòng tiền theo đơn đã giao'} columns={[
               { key: 'date', header: 'Ngày giao', className: 'nowrap', cell: (o) => dmyHm(o.delivered_at) },
-              { key: 'code', header: 'Mã đơn', cell: (o) => <Link href={`/admin/don-hang?order=${o.code}`} className="ui-rowlink">{o.code}</Link> },
+              { key: 'code', header: 'Mã đơn', className: 'nowrap', cell: (o) => <Link href={`/admin/don-hang?order=${o.code}`} className="ui-rowlink">{o.code}</Link> },
               { key: 'cus', header: 'Khách hàng', cell: (o) => o.uname },
               { key: 'pay', header: 'Thanh toán', cell: (o) => o.pay_method },
               { key: 'goods', header: 'Tiền hàng', className: 'nowrap', cell: (o) => fmt(o.total - o.shipping_fee) },
               { key: 'ship', header: 'Phí giao', className: 'nowrap', cell: (o) => fmt(o.shipping_fee) },
               { key: 'total', header: 'Tổng thu', className: 'nowrap strong', cell: (o) => fmt(o.total) },
             ]} />
-            <DataTable rows={bestProducts} rowKey={(b) => b.name} minWidth={720} mobile="cards" caption={`Sản phẩm bán chạy · ${sort === 'desc' ? 'số lượng cao đến thấp' : 'số lượng thấp đến cao'}`} columns={[
+            <FilterChips label="Xếp hạng sản phẩm" current={sort} items={SORTS.map(([k, l]) => ({ key: k, label: l, href: hrefWith(BASE, searchParams, { sort: k === 'desc' ? null : k }) }))} />
+            <DataTable rows={bestProducts} rowKey={(b) => b.name} minWidth={640} mobile="cards" caption="Sản phẩm bán chạy" columns={[
               { key: 'rank', header: 'Hạng', cell: (b) => b.rank },
               { key: 'name', header: 'Sản phẩm', cell: (b) => <b>{b.name}</b> },
               { key: 'q', header: 'Số lượng bán', cell: (b) => b.quantity },
               { key: 'amt', header: 'Tiền hàng', className: 'nowrap', cell: (b) => fmt(b.amount) },
             ]} />
           </>}
-        </div>
+        </section>
       )}
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-start' }}>
-        {sales && <>
-          <Queue title="Đơn chờ xác nhận" empty="Không có đơn nào đang chờ." more="/admin/don-hang?s=0" total={pending.length}>
-            {pending.slice(0, 5).map((o) => <li key={o.id}><span><Link href={`/admin/don-hang?s=0&order=${o.code}`} className="ui-rowlink">{o.code}</Link> · {o.uname}<br /><span className="note">{fmt(o.total)} · {o.pay_method}</span></span><Act action={setOrderStatus} args={[o.code, 1]} label={`Xác nhận đơn ${o.code}`}>Xác nhận</Act></li>)}
-          </Queue>
-          <Queue title="Đơn chờ xuất kho" empty="Không có đơn nào chờ đóng gói." more="/admin/don-hang/xuat-kho" total={toPack.length}>
-            {toPack.slice(0, 5).map((o) => <li key={o.id}><span><b>{o.code}</b> · {o.uname}</span><Link href={`/admin/don-hang/xuat-kho?o=${o.code}`} className="ghost">Xuất kho</Link></li>)}
-          </Queue>
-          <Queue title="Phiếu đặt may chờ kiểm hàng" empty="Không có phiếu nào chờ kiểm." more="/admin/kho/dat-may" total={qc.length}>
-            {qc.slice(0, 5).map((p) => <li key={p.code}><span><b>{p.code}</b> · {p.pname} · {p.color}</span><Link href={`/admin/kho/dat-may?qc=${p.code}`} className="ghost">Kiểm hàng</Link></li>)}
-          </Queue>
-          <Queue title="Tồn kho dưới ngưỡng an toàn" empty="Chưa có SKU nào dưới ngưỡng." more="/admin/kho/nhat-ky" total={low.length}>
-            {low.slice(0, 5).map((v) => <li key={v.sku}><span><b>{v.productName}</b> · {v.color} · {v.size}<br /><span style={{ color: 'var(--err)', fontWeight: 600 }}>Khả dụng {v.available}, ngưỡng {v.minStock}</span></span><Link href="/admin/kho/nhat-ky" className="ghost">Xem cảnh báo</Link></li>)}
-          </Queue>
-        </>}
-        {styling && <>
-          <Queue title="Yêu cầu tư vấn mới" empty="Không có yêu cầu mới." more="/admin/tu-van" total={fresh.length}>
-            {fresh.slice(0, 5).map((c) => <li key={c.id}><span><b>{c.uname}</b> · {dmy(c.created_at)}<br /><span className="note">{c.occasions}</span></span><Link href={`/admin/tu-van?id=${c.id}`} className="ghost">Xem và nhận</Link></li>)}
-          </Queue>
-          <Queue title={admin ? 'Yêu cầu đang phối' : 'Yêu cầu bạn đang phụ trách'} empty="Không có yêu cầu nào đang phối." more="/admin/tu-van" total={working.length}>
-            {working.slice(0, 5).map((c) => <li key={c.id}><span><b>{c.uname}</b><br /><span className="note">{c.occasions}</span></span><Link href={`/admin/tu-van?id=${c.id}`} className="ghost">Soạn set</Link></li>)}
-          </Queue>
-          <Queue title="Lệnh giữ sắp hết hạn" empty="Không có lệnh giữ nào sắp hết hạn." more="/admin/kho/giu-hang" total={expiring.length}>
-            {expiring.slice(0, 5).map((h) => <li key={h.id}><span><b>{h.sku}</b> · {h.uname}<br /><StatusBadge domain="hold" value={hoursLeft(h.expires_at)} /></span><Link href="/admin/kho/giu-hang" className="ghost">Xử lý</Link></li>)}
-          </Queue>
-        </>}
-      </div>
     </PageContainer>
   );
 }

@@ -11,6 +11,7 @@ export type ProductView = {
   price: number;
   salePrice: number | null;
   material: string;
+  collection: string;
   description: string;
   tone: string;
   image: string;
@@ -21,6 +22,7 @@ export type ProductView = {
   sizes: string[];
   variants: VariantRow[];
   inStock: boolean;
+  promotionLabels: string[];
 };
 
 /** Chỉ dùng khi render trang (đọc qua getVariants() đã cache theo request). */
@@ -36,18 +38,25 @@ export function allProducts(opts: { includeInactive?: boolean } = {}): ProductVi
     list.push(v);
   }
 
-  const rows = all<any>('SELECT id,slug,code,name,category,price,sale_price salePrice,material,description,tone,image_url image,active,featured,is_new isNew FROM products ORDER BY id');
+  const rows = all<any>('SELECT id,slug,code,name,category,price,sale_price salePrice,material,collection,description,tone,image_url image,active,featured,is_new isNew FROM products ORDER BY id');
+  const now = new Date().toISOString();
+  const promotions = all<any>("SELECT * FROM promotions WHERE status='active' AND occasion!='birthday' AND audience='all' AND starts_at<=? AND ends_at>=?", now, now);
+  const promoRules = all<any>('SELECT promotion_id,rule_type,entity_type,entity_id FROM promotion_rules');
   return rows.filter((p) => opts.includeInactive || p.active).map((p) => {
     const mine = variantsByProduct.get(p.id) || [];
     const colors = new Set<string>();
     const sizes = new Set<string>();
     let inStock = false;
     for (const v of mine) {
-      colors.add(v.color);
-      sizes.add(v.size);
-      if (v.available > 0) inStock = true;
+      if (v.variantActive) { colors.add(v.color); sizes.add(v.size); if (v.available > 0) inStock = true; }
     }
-    return { ...p, variants: mine, colors: [...colors], sizes: [...sizes], inStock };
+    const promotionLabels = promotions.filter((promo) => {
+      if (p.salePrice && !promo.combinable) return false;
+      const rules = promoRules.filter((r) => r.promotion_id === promo.id);
+      const match = (r: any) => r.entity_type === 'product' ? Number(r.entity_id) === p.id : r.entity_type === 'category' ? r.entity_id === p.category : r.entity_id === p.collection;
+      return !rules.some((r) => r.rule_type === 'exclude' && match(r)) && (!rules.some((r) => r.rule_type === 'include') || rules.some((r) => r.rule_type === 'include' && match(r)));
+    }).map((promo) => `${promo.name} · ${promo.kind === 'percent' ? `giảm ${promo.value}%` : `${promo.value.toLocaleString('vi-VN')}đ`} · ${promo.code}`);
+    return { ...p, variants: mine, colors: [...colors], sizes: [...sizes], inStock, promotionLabels };
   });
 }
 export function productBySlug(slug: string) {

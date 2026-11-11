@@ -130,8 +130,19 @@ test.describe('admin', () => {
 
   test('UC-20: chỉ số trên tổng quan dẫn tới màn xử lý', async ({ page }) => {
     await page.goto('/admin');
-    await page.locator('a.kpi', { hasText: 'Đơn chờ xác nhận' }).click();
-    await expect(page).toHaveURL(/\/admin\/don-hang\?s=0/);
+    await expect(page.locator('h1')).toContainText(/việc/);
+    const head = page.locator('a.ov-q-head').first();
+    const href = (await head.getAttribute('href'))!;
+    await head.click();
+    await page.waitForURL((u) => u.pathname + u.search === href);
+  });
+
+  test('UC-20: admin đổi kỳ doanh thu bằng chip, giữ trên URL', async ({ page }) => {
+    await page.goto('/admin');
+    await expect(page.locator('#tai-chinh')).toContainText('Doanh thu');
+    await page.getByRole('link', { name: 'Năm nay' }).click();
+    await expect(page).toHaveURL(/period=year/);
+    await expect(page.locator('#tai-chinh')).toContainText('năm nay');
   });
 });
 
