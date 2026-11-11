@@ -1,4 +1,5 @@
-import { cache } from 'react';
+import { cache as reactCache } from 'react';
+const cache = typeof reactCache === 'function' ? reactCache : <T extends (...args: any[]) => any>(fn: T) => fn;
 import { all, get, run, tx } from './db';
 import { LOC_KEYS, SELL_LOCS, HOLD_STATUS, nowIso, mkSku, stampDay, pad, barcodeDigits } from './util';
 

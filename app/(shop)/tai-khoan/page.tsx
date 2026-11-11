@@ -49,7 +49,7 @@ export default async function Account({ searchParams }: { searchParams: { tab?: 
   const consultIds = rawConsults.map((c) => c.id);
   const holdsByConsultId = new Map<number, any[]>();
   if (consultIds.length > 0) {
-    const allHolds = all<any>(`SELECT h.*, p.name FROM holds h JOIN variants v ON v.sku=h.sku JOIN products p ON p.id=v.product_id WHERE h.consult_id IN (${consultIds.map(() => '?').join(',')}) AND h.status=? AND h.expires_at > ?`, ...consultIds, HOLD_STATUS.active, nowIso());
+    const allHolds = all<any>(`SELECT h.*, p.name, p.slug FROM holds h JOIN variants v ON v.sku=h.sku JOIN products p ON p.id=v.product_id WHERE h.consult_id IN (${consultIds.map(() => '?').join(',')}) AND h.status=? AND h.expires_at > ?`, ...consultIds, HOLD_STATUS.active, nowIso());
     for (const h of allHolds) {
       let list = holdsByConsultId.get(h.consult_id);
       if (!list) {
@@ -96,7 +96,7 @@ export default async function Account({ searchParams }: { searchParams: { tab?: 
               <span className="note">Gửi ngày {dmyHm(c.created_at)} · {c.work_env} · ngân sách {c.budget}</span>
               {c.status === 'Đã gửi gợi ý' && <>
                 <p style={{ background: '#F6EEEF', border: '1px solid var(--line)', padding: '12px 14px' }}><b>{c.sname || 'Stylist'}:</b> {c.message || 'Stylist đã chọn một số món cho bạn.'}</p>
-                <ul className="list">{c.holds.map((h: any) => <li key={h.id}><span>{h.name}<br /><span className="note">{h.sku}</span></span><span className="badge pink">Giữ cho bạn còn {hoursLeft(h.expires_at)} giờ</span></li>)}</ul>
+                <ul className="list">{c.holds.map((h: any) => <li key={h.id}><span><Link href={`/san-pham/${h.slug}`} className="textbtn" style={{ fontWeight: 600 }}>{h.name}</Link><br /><span className="note">{h.sku}</span></span><span className="badge pink">Giữ cho bạn còn {hoursLeft(h.expires_at)} giờ</span></li>)}</ul>
                 {c.holds.length === 0 && <p className="note">Thời gian giữ hàng đã hết, hàng đã được nhả về kho bán. Liên hệ stylist nếu bạn vẫn muốn các món này.</p>}
                 {c.holds.length > 0 && <p className="note">Muốn mua món đang giữ, hãy báo stylist để chốt mua. Đặt hàng trên website có thể báo thiếu hàng vì món đang được giữ cho chính bạn (giới hạn L-01).</p>}
               </>}
