@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { fmt, dmy, dmyHm, sizeText } from '@/lib/util';
 import { useRun } from '@/components/admin/Flash';
 import { setOrderStatus } from '@/app/actions/admin';
+import { BaseModal } from '@/components/ui/Dialog';
 
 export type OrderWorkflowItem = {
   id: number;
@@ -77,6 +78,14 @@ export default function WorkflowCenter({
 
   // Slide-over drawer state
   const [selectedOrder, setSelectedOrder] = useState<OrderWorkflowItem | null>(null);
+
+  // Pop-up riêng chứa danh sách đơn hàng mới (không hiện hết lên màn hình đang dùng)
+  const [newOrdersOpen, setNewOrdersOpen] = useState(false);
+  // Pop-up là <dialog> modal (nằm trên mọi lớp), nên đóng nó trước khi mở ngăn kéo chi tiết
+  const openOrderDetail = (order: OrderWorkflowItem) => {
+    setNewOrdersOpen(false);
+    setSelectedOrder(order);
+  };
 
   // Close drawer on Escape
   useEffect(() => {
@@ -183,50 +192,27 @@ export default function WorkflowCenter({
                 </div>
               ) : (
                 <div className="ov-item-list">
-                  {pendingOrders.map((order) => (
-                    <div key={order.id} className="ov-item-row">
-                      <div className="ov-item-info" onClick={() => setSelectedOrder(order)} role="button" tabIndex={0}>
-                        <div className="ov-item-title-row">
-                          <span className="ov-item-code">{order.code}</span>
-                          <span className="ov-status-pill ov-status-pill--amber">Chờ xác nhận</span>
-                          <span className="ov-item-time">{dmyHm(order.created_at)}</span>
-                        </div>
-                        <div className="ov-item-desc">
-                          <span><b>{order.uname}</b> ({order.recv_phone || 'Chưa có SĐT'})</span>
-                          <span className="ov-dot">·</span>
-                          <span className="ov-item-price">{fmt(order.total)}</span>
-                          <span className="ov-dot">·</span>
-                          <span className="note">{order.pay_method}</span>
-                          {order.lines && order.lines.length > 0 && (
-                            <>
-                              <span className="ov-dot">·</span>
-                              <span className="note">{order.lines.map((l) => `${l.qty}x ${l.name}`).join(', ')}</span>
-                            </>
-                          )}
-                        </div>
+                  <div className="ov-item-row">
+                    <div className="ov-item-info" onClick={() => setNewOrdersOpen(true)} role="button" tabIndex={0}>
+                      <div className="ov-item-title-row">
+                        <span className="ov-item-code">🔔 {pendingOrders.length} đơn hàng mới</span>
+                        <span className="ov-status-pill ov-status-pill--amber">Chờ xác nhận</span>
+                        <span className="ov-item-time">{dmyHm(pendingOrders[0].created_at)}</span>
                       </div>
-
-                      <div className="ov-item-actions">
-                        <button
-                          type="button"
-                          className="ov-btn ov-btn--sm ov-btn--ghost"
-                          onClick={() => setSelectedOrder(order)}
-                          title="Xem chi tiết đơn hàng trong slide-over"
-                        >
-                          Chi tiết
-                        </button>
-                        <button
-                          type="button"
-                          className="ov-btn ov-btn--sm ov-btn--primary"
-                          disabled={pending}
-                          onClick={() => handleConfirmOrder(order.code)}
-                          title={`Xác nhận đơn hàng ${order.code}`}
-                        >
-                          Xác nhận
-                        </button>
+                      <div className="ov-item-desc">
+                        <span className="note">Bấm để xem danh sách đơn mới trong cửa sổ riêng.</span>
                       </div>
                     </div>
-                  ))}
+                    <div className="ov-item-actions">
+                      <button
+                        type="button"
+                        className="ov-btn ov-btn--sm ov-btn--primary"
+                        onClick={() => setNewOrdersOpen(true)}
+                      >
+                        Xem đơn mới
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )
             ) : (
@@ -462,6 +448,67 @@ export default function WorkflowCenter({
           </div>
         )}
       </div>
+
+      {/* Pop-up riêng: danh sách đơn hàng mới chờ xác nhận */}
+      <BaseModal
+        open={newOrdersOpen && pendingOrders.length > 0}
+        onClose={() => setNewOrdersOpen(false)}
+        eyebrow="Thông báo"
+        title={`Đơn hàng mới (${pendingOrders.length})`}
+        size="lg"
+        footer={
+          <Link href="/admin/don-hang" className="ov-btn ov-btn--ghost" onClick={() => setNewOrdersOpen(false)}>
+            Quản lý tất cả đơn hàng →
+          </Link>
+        }
+      >
+        <div className="ov-item-list">
+          {pendingOrders.map((order) => (
+            <div key={order.id} className="ov-item-row">
+              <div className="ov-item-info" onClick={() => openOrderDetail(order)} role="button" tabIndex={0}>
+                <div className="ov-item-title-row">
+                  <span className="ov-item-code">{order.code}</span>
+                  <span className="ov-status-pill ov-status-pill--amber">Chờ xác nhận</span>
+                  <span className="ov-item-time">{dmyHm(order.created_at)}</span>
+                </div>
+                <div className="ov-item-desc">
+                  <span><b>{order.uname}</b> ({order.recv_phone || 'Chưa có SĐT'})</span>
+                  <span className="ov-dot">·</span>
+                  <span className="ov-item-price">{fmt(order.total)}</span>
+                  <span className="ov-dot">·</span>
+                  <span className="note">{order.pay_method}</span>
+                  {order.lines && order.lines.length > 0 && (
+                    <>
+                      <span className="ov-dot">·</span>
+                      <span className="note">{order.lines.map((l) => `${l.qty}x ${l.name}`).join(', ')}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="ov-item-actions">
+                <button
+                  type="button"
+                  className="ov-btn ov-btn--sm ov-btn--ghost"
+                  onClick={() => openOrderDetail(order)}
+                  title="Xem chi tiết đơn hàng trong slide-over"
+                >
+                  Chi tiết
+                </button>
+                <button
+                  type="button"
+                  className="ov-btn ov-btn--sm ov-btn--primary"
+                  disabled={pending}
+                  onClick={() => handleConfirmOrder(order.code)}
+                  title={`Xác nhận đơn hàng ${order.code}`}
+                >
+                  Xác nhận
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </BaseModal>
 
       {/* Slide-over (Ngăn kéo bên phải) */}
       {selectedOrder && (
