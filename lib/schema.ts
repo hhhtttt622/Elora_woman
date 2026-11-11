@@ -22,7 +22,10 @@ CREATE TABLE IF NOT EXISTS orders(
   id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL UNIQUE, user_id INTEGER NOT NULL REFERENCES users(id), status INTEGER NOT NULL DEFAULT 0,
   pay_method TEXT NOT NULL, shipping_fee INTEGER NOT NULL DEFAULT 30000, total INTEGER NOT NULL, recv_name TEXT NOT NULL, recv_phone TEXT NOT NULL,
   address TEXT NOT NULL, note TEXT DEFAULT '', carrier TEXT DEFAULT '', tracking TEXT DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  shipped_at TEXT, delivered_at TEXT, promotion_id INTEGER REFERENCES promotions(id), promotion_code TEXT DEFAULT '', promotion_name TEXT DEFAULT '', discount_amount INTEGER NOT NULL DEFAULT 0);
+  shipped_at TEXT, delivered_at TEXT, promotion_id INTEGER REFERENCES promotions(id), promotion_code TEXT DEFAULT '', promotion_name TEXT DEFAULT '', discount_amount INTEGER NOT NULL DEFAULT 0,
+  payment_status TEXT NOT NULL DEFAULT 'NOT_REQUIRED', payment_deadline TEXT,
+  payment_confirmed_at TEXT, payment_confirmed_by INTEGER REFERENCES users(id), payment_bank_bin TEXT,
+  payment_account_no TEXT, payment_account_name TEXT);
 CREATE TABLE IF NOT EXISTS order_lines(
   id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   sku TEXT NOT NULL, name TEXT NOT NULL, qty INTEGER NOT NULL, price INTEGER NOT NULL);
@@ -98,6 +101,13 @@ export const MIGRATIONS: [string, string, string][] = [
   ["orders", "promotion_code", "TEXT DEFAULT ''"],
   ["orders", "promotion_name", "TEXT DEFAULT ''"],
   ["orders", "discount_amount", "INTEGER NOT NULL DEFAULT 0"],
+  ["orders", "payment_status", "TEXT NOT NULL DEFAULT 'NOT_REQUIRED'"],
+  ["orders", "payment_deadline", "TEXT"],
+  ["orders", "payment_confirmed_at", "TEXT"],
+  ["orders", "payment_confirmed_by", "INTEGER REFERENCES users(id)"],
+  ["orders", "payment_bank_bin", "TEXT"],
+  ["orders", "payment_account_no", "TEXT"],
+  ["orders", "payment_account_name", "TEXT"],
   ["consults", "stylist_id", "INTEGER REFERENCES users(id)"],
   ["consults", "hold_hours", "INTEGER"],
   ["consults", "sent_at", "TEXT"],

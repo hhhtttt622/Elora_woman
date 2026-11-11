@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { allProducts, adviseSize, SIZE_GUIDE } from '@/lib/shop';
+import { allProducts, adviseSize, outfitFor, SIZE_GUIDE } from '@/lib/shop';
 import { getUser } from '@/lib/auth';
 import { all, get } from '@/lib/db';
 import { ProductImage, ProductCard } from '@/components/Shop';
@@ -26,7 +26,7 @@ export default async function Detail({ params }: { params: { slug: string } }) {
   const u = await userPromise;
   const me = u ? get<any>('SELECT height_cm h, weight_kg w FROM users WHERE id=?', u.id) : null;
   const advice = me ? adviseSize(me.h, me.w) : '';
-  const outfit: never[] = [];
+  const outfit = outfitFor(p, list);
   const showGuide = p.category !== 'Phụ kiện';
   return (
     <div className="wrap" style={{ paddingTop: 40, display: 'flex', flexDirection: 'column', gap: 56 }}>

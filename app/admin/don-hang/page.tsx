@@ -10,6 +10,7 @@ import { DescriptionList, Section, Steps } from '@/components/ui/Display';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { UrlDrawer } from '@/components/ui/Dialog';
 import OrderStatusForm from '@/components/admin/orders/OrderStatusForm';
+import PaymentReconciliation from '@/components/admin/orders/PaymentReconciliation';
 export const dynamic = 'force-dynamic';
 
 type SP = { s?: string; q?: string; page?: string; order?: string };
@@ -20,7 +21,7 @@ export default async function Orders({ searchParams }: { searchParams: SP }) {
   await requirePage('UC-17', BASE);
   const f = searchParams.s !== undefined && searchParams.s !== '' ? parseInt(searchParams.s, 10) : -1;
   const q = norm(searchParams.q || '');
-  const rawOrders = all<any>('SELECT o.*, u.name uname, u.email uemail FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.id DESC');
+  const rawOrders = all<any>('SELECT o.*, u.name uname, u.email uemail, confirmer.name payment_confirmer FROM orders o JOIN users u ON u.id=o.user_id LEFT JOIN users confirmer ON confirmer.id=o.payment_confirmed_by ORDER BY o.id DESC');
   const allLines = all<any>('SELECT * FROM order_lines ORDER BY order_id, id');
   const linesByOrderId = new Map<number, any[]>();
   for (const line of allLines) {
@@ -100,6 +101,15 @@ export default async function Orders({ searchParams }: { searchParams: SP }) {
               ['Ngày giao', sel.delivered_at ? dmyHm(sel.delivered_at) : '—'],
               ['Ghi chú của khách', sel.note || '(không có)'],
             ]} />
+            {sel.pay_method === 'Chuyển khoản' && (
+              <PaymentReconciliation
+                code={sel.code}
+                amount={sel.total}
+                status={sel.payment_status}
+                confirmedAt={sel.payment_confirmed_at ? dmyHm(sel.payment_confirmed_at) : null}
+                confirmedBy={sel.payment_confirmer || null}
+              />
+            )}
           </Section>
         </UrlDrawer>
       )}

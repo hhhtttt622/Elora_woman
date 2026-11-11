@@ -1096,6 +1096,7 @@ node_modules
 .next
 prisma/dev.db*
 .env
+.env*.local
 data/
 *.db
 *.db-*

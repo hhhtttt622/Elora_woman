@@ -67,11 +67,13 @@ export async function setOrderStatus(code: string, status: number): Promise<R> {
     if (status === 4) {
       if (o.status >= 2) throw new Error("Không thể hủy đơn đã xuất kho.");
       tx(() => {
-        run("UPDATE orders SET status=4 WHERE id=?", o.id);
+        run("UPDATE orders SET status=4, payment_status=CASE WHEN pay_method='Chuyển khoản' AND payment_status IN ('PENDING_PAYMENT','WAITING_CONFIRMATION') THEN 'CANCELLED' ELSE payment_status END WHERE id=?", o.id);
         run("UPDATE promotion_redemptions SET status='released',released_at=? WHERE order_id=? AND status='reserved'", nowIso(), o.id);
       });
       return done(`Đã hủy đơn ${code} và khôi phục lượt ưu đãi.`);
     }
+    if (o.pay_method === "Chuyển khoản" && status >= 1 && o.payment_status !== "PAID")
+      throw new Error("Chỉ xác nhận hoặc xử lý giao đơn chuyển khoản sau khi nhân viên đã đối soát và xác nhận đã nhận tiền.");
     if (status === 2)
       throw new Error(
         "Đơn chỉ chuyển sang Đang giao khi đóng gói ở mục Xuất kho, để kho được trừ đúng.",

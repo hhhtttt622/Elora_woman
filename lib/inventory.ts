@@ -1,6 +1,9 @@
-import { cache } from 'react';
+import * as React from 'react';
 import { all, get, run, tx } from './db';
 import { LOC_KEYS, SELL_LOCS, HOLD_STATUS, nowIso, mkSku, stampDay, pad, barcodeDigits } from './util';
+import { expirePendingPayments } from './payment';
+
+const cache = (typeof (React as any).cache === 'function' ? (React as any).cache : ((fn: any) => fn)) as typeof import('react').cache;
 
 export type VariantRow = {
   id: number; sku: string; productId: number; productName: string; productCode: string; category: string; price: number; priceOverride: number | null; image: string; active: number; variantActive: number;
@@ -27,9 +30,10 @@ export function sweepHolds() {
 
 /** Tạm giữ = lệnh giữ còn hạn + số lượng của đơn chưa xuất kho (BR-01). */
 export function reservedMap(): Record<string, number> {
+  expirePendingPayments();
   const m: Record<string, number> = {};
   for (const r of all<any>('SELECT sku, SUM(qty) q FROM holds WHERE status=? AND expires_at > ? GROUP BY sku', HOLD_STATUS.active, nowIso())) m[r.sku] = (m[r.sku] || 0) + r.q;
-  for (const r of all<any>('SELECT l.sku, SUM(l.qty) q FROM order_lines l JOIN orders o ON o.id=l.order_id WHERE o.status < 2 GROUP BY l.sku')) m[r.sku] = (m[r.sku] || 0) + r.q;
+  for (const r of all<any>("SELECT l.sku, SUM(l.qty) q FROM order_lines l JOIN orders o ON o.id=l.order_id WHERE o.status < 2 AND o.payment_status<> 'CANCELLED' GROUP BY l.sku")) m[r.sku] = (m[r.sku] || 0) + r.q;
   return m;
 }
 

@@ -29,6 +29,14 @@ Tài khoản nội bộ mới do admin tạo ở Quản trị → Tài khoản n
 
 Đổi `SESSION_SECRET` trong `.env` và mật khẩu admin trước khi triển khai thật.
 
+## Thanh toán VietQR chuyển khoản
+
+Tạo `.env.local` từ `.env.example`, sau đó cấu hình `VIETQR_BANK_BIN` (BIN ngân hàng 6 chữ số), `VIETQR_ACCOUNT_NO` và `VIETQR_ACCOUNT_NAME`. Không commit `.env.local`.
+
+Khi khách chọn chuyển khoản, máy chủ tạo đơn với trạng thái thanh toán `PENDING_PAYMENT`, khóa tồn trong 15 phút và tạo QR VietQR chứa số tiền cùng mã đơn. Khách bấm “Tôi đã thanh toán” để chuyển sang `WAITING_CONFIRMATION`; thao tác này chỉ báo cho nhân viên, không xác minh tiền đã vào. Nhân viên kiểm tra giao dịch trên tài khoản ngân hàng, rồi vào Quản trị → Đơn hàng để xác nhận `PAID` hoặc hủy. Đơn hết 15 phút sẽ chuyển sang `CANCELLED` và nhả tồn. Trạng thái giao hàng vẫn được quản lý riêng.
+
+Endpoint khách hàng: `POST /api/orders/{orderCode}/payment-confirmation`. Endpoint nhân viên/admin để đối soát thủ công: `POST /api/admin/orders/{orderCode}/payment` với JSON `{ "status": "PAID" }` hoặc `{ "status": "CANCELLED" }`. Cả hai endpoint yêu cầu đăng nhập và kiểm tra quyền ở máy chủ.
+
 ## Cấu trúc
 
 - `app/(shop)` cửa hàng: trang chủ, danh mục + lọc, chi tiết sản phẩm, giỏ hàng, thanh toán, tài khoản, đăng nhập/đăng ký, tư vấn
