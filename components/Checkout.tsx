@@ -16,12 +16,20 @@ export default function Checkout({ name, phone, done, initialPromo = '', offers 
   const [err, setErr] = useState('');
   const [pending, start] = useTransition();
   const [code, setCode] = useState(done || '');
+  const [navigating, setNavigating] = useState(false);
   const [promo, setPromo] = useState(initialPromo); const [discount, setDiscount] = useState(0); const [promoName, setPromoName] = useState(''); const [promoError, setPromoError] = useState('');
   const sub = lines.reduce((n, l) => n + l.price * l.qty, 0);
   const set = (k: string) => (e: any) => { setF((prev) => ({ ...prev, [k]: e.target.value })); setErr(''); };
   const applyPromo = async (value = promo) => { setPromoError(''); if (!value.trim()) { setDiscount(0); setPromoName(''); return; } const result = await quotePromotionAction(value, lines.map((l) => ({ sku:l.sku, qty:l.qty }))); if (result.error) { setDiscount(0); setPromoName(''); setPromoError(result.error); } else { setPromo(result.quote!.code); setDiscount(result.quote!.discount); setPromoName(result.quote!.name); } };
   useEffect(() => { if (ready && initialPromo) void applyPromo(initialPromo); }, [ready, initialPromo]);
 
+  if (navigating) return (
+    <div className="wrap" style={{ paddingTop: 56, maxWidth: 640, display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <span className="eb">Đang xử lý</span>
+      <h1 className="disp" style={{ fontSize: 36 }}>Đang chuyển đến trang thanh toán VietQR...</h1>
+      <p className="note">Vui lòng chờ trong giây lát.</p>
+    </div>
+  );
   if (code) return (
     <div className="wrap" style={{ paddingTop: 56, maxWidth: 640, display: 'flex', flexDirection: 'column', gap: 18 }}>
       <span className="eb">Đặt hàng thành công</span>
@@ -39,6 +47,7 @@ export default function Checkout({ name, phone, done, initialPromo = '', offers 
       else if (r.code) {
         clear();
         if (f.pay === 'Chuyển khoản') {
+          setNavigating(true);
           router.push(`/thanh-toan/${encodeURIComponent(r.code)}`);
         } else {
           setCode(r.code);
