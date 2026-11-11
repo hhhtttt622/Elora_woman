@@ -1,35 +1,29 @@
 'use client';
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/cart';
 import { placeOrderAction } from '@/app/actions/shop';
 import { fmt, sizeText, SHIPPING_FEE } from '@/lib/util';
 
 const PAY_METHODS = ['Thanh toán khi nhận hàng', 'Chuyển khoản'] as const;
 
-export default function Checkout({ name, phone, done }: { name: string; phone: string; done?: string }) {
+export default function Checkout({ name, phone }: { name: string; phone: string }) {
   const { lines, clear, ready } = useCart();
+  const router = useRouter();
   const [f, setF] = useState({ name, phone, address: '', pay: 'Thanh toán khi nhận hàng', note: '' });
   const [err, setErr] = useState('');
   const [pending, start] = useTransition();
-  const [code, setCode] = useState(done || '');
   const sub = lines.reduce((n, l) => n + l.price * l.qty, 0);
   const set = (k: string) => (e: any) => { setF((prev) => ({ ...prev, [k]: e.target.value })); setErr(''); };
 
-  if (code) return (
-    <div className="wrap" style={{ paddingTop: 56, maxWidth: 640, display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <span className="eb">Đặt hàng thành công</span>
-      <h1 className="disp" style={{ fontSize: 48, lineHeight: 1 }}>Cảm ơn bạn</h1>
-      <p>Mã đơn của bạn là <b>{code}</b>. Bạn có thể theo dõi đơn trong tài khoản. Bản demo này chưa kết nối cổng thanh toán thật.</p>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}><Link href="/tai-khoan?tab=track" className="btn">Theo dõi đơn hàng</Link><Link href="/san-pham" className="ghost" style={{ minHeight: 48 }}>Tiếp tục mua sắm</Link></div>
-    </div>);
   if (ready && lines.length === 0) return <div className="wrap" style={{ paddingTop: 56 }}><div className="card" style={{ maxWidth: 520, background: '#F6EEEF' }}><b>Giỏ hàng đang trống</b><Link href="/san-pham" className="btn" style={{ alignSelf: 'flex-start' }}>Chọn sản phẩm</Link></div></div>;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     start(async () => {
       const r = await placeOrderAction({ lines: lines.map((l) => ({ sku: l.sku, qty: l.qty })), ...f });
-      if (r.error) setErr(r.error); else if (r.code) { clear(); setCode(r.code); }
+      if (r.error) setErr(r.error); else if (r.code) { clear(); router.push(`/thanh-toan/${encodeURIComponent(r.code)}`); }
     });
   };
   return (

@@ -1,4 +1,4 @@
-import { cache } from 'react';
+import * as React from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SignJWT, jwtVerify } from 'jose';
@@ -6,6 +6,8 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { get, run } from './db';
 import { can, homeOf, type Perm, type Role } from './permissions';
+
+const cache = (typeof (React as any).cache === 'function' ? (React as any).cache : ((fn: any) => fn)) as typeof import('react').cache;
 
 const COOKIE = 'elora_session';
 const TTL_DAYS = 7; // BR-13
