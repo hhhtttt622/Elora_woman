@@ -1,6 +1,5 @@
 "use client";
-import { Fragment, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useRun } from "./Flash";
 import { packOrder } from "@/app/actions/admin";
 
@@ -10,185 +9,160 @@ type PackingItem = {
   name: string;
   shelf: string;
   online: number;
+  image: string;
 };
-const checks = [
-  "Tình trạng sạch, không rách hoặc dính bẩn",
+
+const qualityChecks = [
+  "Vải sạch, không rách hoặc dính bẩn",
   "Cúc đủ và chắc",
   "Khóa kéo hoạt động trơn tru",
 ];
 
 export default function PackPanel({
   code,
-  items = [],
+  items,
+  getChecks,
+  setCheck,
+  completed,
+  onComplete,
 }: {
   code: string;
-  items?: PackingItem[];
+  items: PackingItem[];
+  getChecks: (sku: string) => boolean[];
+  setCheck: (sku: string, index: number, checked: boolean) => void;
+  completed?: string;
+  onComplete: (tracking: string) => void;
 }) {
   const { run, pending } = useRun();
-  const router = useRouter();
-  const [openSku, setOpenSku] = useState<string | null>(null);
-  const [checked, setChecked] = useState<Record<string, boolean[]>>({});
   const [carrier, setCarrier] = useState("GHN");
-  const [err, setErr] = useState("");
-  const toggleCheck = (sku: string, index: number) =>
-    setChecked((current) => {
-      const itemChecks = current[sku] || [false, false, false];
-      return {
-        ...current,
-        [sku]: itemChecks.map((value, i) => (i === index ? !value : value)),
-      };
-    });
-  const allChecked =
-    items.length > 0 &&
-    items.every(
-      (item) =>
-        checked[item.sku]?.length === checks.length &&
-        checked[item.sku].every(Boolean),
-    );
+  const [tracking, setTracking] = useState("");
+  const [error, setError] = useState("");
+  const allChecked = items.length > 0 && items.every((item) => getChecks(item.sku).every(Boolean));
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div className="scroll">
-        <table className="tb" style={{ minWidth: 760 }}>
-          <caption>Danh sách nhặt hàng (Pick-list), sắp theo kệ</caption>
-          <thead>
-            <tr>
-              <th>Kệ</th>
-              <th>SKU</th>
-              <th>Sản phẩm</th>
-              <th>SL nhặt</th>
-              <th>Tồn Kho Online</th>
-              <th>Kiểm tra</th>
-            </tr>
-          </thead>
-          <tbody>
+    <div className="outbound-process">
+      <section className="outbound-picklist outbound-print-area" aria-label="Danh sách nhặt hàng">
+        <header className="outbound-section-head">
+          <div>
+            <span className="outbound-eyebrow">Pick-list · Sắp xếp theo kệ</span>
+            <h3>Danh sách nhặt hàng</h3>
+          </div>
+          <span className="outbound-picklist-count">{items.length} mẫu · {items.reduce((sum, item) => sum + item.qty, 0)} món</span>
+        </header>
+
+        {items.length ? (
+          <div className="outbound-pick-items">
             {items.map((item) => {
-              const itemChecks = checked[item.sku] || [false, false, false];
-              const complete = itemChecks.every(Boolean);
-              const expanded = openSku === item.sku;
+              const checks = getChecks(item.sku);
+              const picked = !!checks[0];
+              const inStock = item.online >= item.qty;
               return (
-                <Fragment key={item.sku}>
-                  <tr key={item.sku}>
-                    <td>
-                      <b>{item.shelf}</b>
-                    </td>
-                    <td style={{ whiteSpace: "nowrap" }}>{item.sku}</td>
-                    <td style={{ minWidth: 220 }}>
-                      <button
-                        type="button"
-                        className="textbtn"
-                        aria-expanded={expanded}
-                        onClick={() => setOpenSku(expanded ? null : item.sku)}
-                        style={{ textAlign: "left" }}
-                      >
-                        {item.name}
-                      </button>
-                    </td>
-                    <td>{item.qty}</td>
-                    <td>
-                      <span
-                        className={
-                          "badge" + (item.online >= item.qty ? "" : " red")
-                        }
-                      >
-                        {item.online >= item.qty
-                          ? `Đủ (${item.online})`
-                          : `Thiếu (${item.online})`}
+                <article className={`outbound-pick-item${picked ? " is-picked" : ""}`} key={item.sku}>
+                  <div className="outbound-item-main">
+                    <span className="outbound-shelf-tag" aria-label={`Kệ ${item.shelf}`}>{item.shelf}</span>
+                    {item.image ? (
+                      // Product photos can be uploaded to local storage or external URLs.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img className="outbound-product-image" src={item.image} alt={item.name} />
+                    ) : (
+                      <span className="outbound-product-placeholder" aria-hidden>EW</span>
+                    )}
+                    <div className="outbound-product-copy">
+                      <b>{item.name}</b>
+                      <span>{item.sku}</span>
+                    </div>
+                    <div className="outbound-quantity-stock">
+                      <b>SL {item.qty}</b>
+                      <span className={inStock ? "is-stock-ok" : "is-stock-low"}>
+                        {inStock ? `Kho online ${item.online}` : `Thiếu ${item.qty - item.online}`}
                       </span>
-                    </td>
-                    <td>
-                      <span className={"badge" + (complete ? " dark" : "")}>
-                        {complete
-                          ? "Đã kiểm"
-                          : `${itemChecks.filter(Boolean).length}/${checks.length}`}
-                      </span>
-                    </td>
-                  </tr>
-                  {expanded && (
-                    <tr key={`${item.sku}-checks`}>
-                      <td colSpan={6} style={{ background: "var(--blush)" }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 10,
-                            padding: 6,
-                          }}
-                        >
-                          <b>
-                            Kiểm tra {item.name} · {item.sku}
-                          </b>
-                          {checks.map((label, index) => (
-                            <label
-                              key={label}
-                              style={{
-                                display: "flex",
-                                gap: 12,
-                                alignItems: "center",
-                                cursor: "pointer",
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={itemChecks[index]}
-                                onChange={() => toggleCheck(item.sku, index)}
-                                style={{
-                                  width: 22,
-                                  height: 22,
-                                  accentColor: "#6B2437",
-                                }}
-                              />
-                              {label}
-                            </label>
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
+                    </div>
+                    <label className={`outbound-pick-toggle${picked ? " is-checked" : ""}`}>
+                      <input type="checkbox" checked={picked} onChange={(event) => setCheck(item.sku, 0, event.target.checked)} disabled={!!completed} />
+                      <span className="outbound-pick-check" aria-hidden>{picked ? "✓" : ""}</span>
+                      <span><b>{picked ? "1/1" : "0/1"}</b><small>{picked ? "Đã nhặt" : "Đánh dấu đã nhặt"}</small></span>
+                    </label>
+                  </div>
+
+                  <div className="outbound-quality">
+                    <span className="outbound-quality-title">Kiểm tra chất lượng</span>
+                    {qualityChecks.map((label, index) => (
+                      <label key={label} className="outbound-quality-check">
+                        <input type="checkbox" checked={!!checks[index + 1]} onChange={(event) => setCheck(item.sku, index + 1, event.target.checked)} disabled={!!completed} />
+                        <span>{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </article>
               );
             })}
-          </tbody>
-        </table>
-      </div>
-      <div className="row">
-        <div className="fl" style={{ maxWidth: 260, flex: "1 1 200px" }}>
-          <label className="lbl" htmlFor="out-carrier">
-            Đơn vị vận chuyển
-          </label>
-          <select
-            id="out-carrier"
-            className="fld"
-            value={carrier}
-            onChange={(e) => setCarrier(e.target.value)}
-          >
-            <option value="GHN">Giao Hàng Nhanh (GHN)</option>
-            <option value="GHTK">Giao Hàng Tiết Kiệm (GHTK)</option>
-          </select>
+          </div>
+        ) : (
+          <p className="outbound-empty-inline">Đơn hàng chưa có sản phẩm để nhặt.</p>
+        )}
+      </section>
+
+      <section className="outbound-shipping" aria-label="Thông tin vận chuyển">
+        <div className="outbound-shipping-heading">
+          <div>
+            <span className="outbound-eyebrow">Bước cuối</span>
+            <h3>Vận chuyển</h3>
+          </div>
+          {completed && <span className="outbound-complete-pill">✓ Đã xuất kho</span>}
         </div>
-        <button
-          className="btn"
-          disabled={pending || !allChecked}
-          onClick={async () => {
-            const r = await run(packOrder(code, carrier, checked));
-            if (r.error) setErr(r.error);
-            else {
-              setErr("");
-              setChecked({});
-              router.push(`/admin/don-hang/xuat-kho?label=${code}`);
-            }
-          }}
-        >
-          Đóng gói và trừ kho
+
+        <fieldset className="outbound-carriers" disabled={!!completed}>
+          <legend>Đơn vị vận chuyển</legend>
+          {([ ["GHN", "Giao Hàng Nhanh", "G"], ["GHTK", "Giao Hàng Tiết Kiệm", "K"] ] as const).map(([value, name, icon]) => (
+            <label key={value} className={`outbound-carrier${carrier === value ? " is-active" : ""}`}>
+              <input type="radio" name={`carrier-${code}`} value={value} checked={carrier === value} onChange={() => setCarrier(value)} />
+              <span className={`outbound-carrier-logo outbound-carrier-logo--${value.toLowerCase()}`}>{icon}</span>
+              <span><b>{value}</b><small>{name}</small></span>
+              {carrier === value && <span className="outbound-carrier-selected" aria-label="Đã chọn">✓</span>}
+            </label>
+          ))}
+        </fieldset>
+
+        <label className="outbound-tracking-field">
+          <span>Mã vận đơn</span>
+          <input
+            className="fld"
+            type="text"
+            value={completed || tracking}
+            onChange={(event) => setTracking(event.target.value)}
+            placeholder="Nhập mã vận đơn từ đơn vị giao hàng"
+            autoComplete="off"
+            disabled={!!completed}
+            aria-required="true"
+          />
+        </label>
+
+        {error && <p className="err" role="alert">{error}</p>}
+        {completed ? (
+          <div className="outbound-shipped-result" role="status">
+            <span>Đơn đã được đóng gói và trừ kho.</span>
+            <b>{completed}</b>
+          </div>
+        ) : (
+          <button
+            className="outbound-pack-button"
+            type="button"
+            disabled={pending || !allChecked || !tracking.trim()}
+            onClick={async () => {
+              setError("");
+              const result = await run(packOrder(code, carrier, tracking.trim(), Object.fromEntries(items.map((item) => [item.sku, getChecks(item.sku)]))));
+              if (result.error) setError(result.error);
+              else onComplete(tracking.trim());
+            }}
+          >
+            {pending ? "Đang xử lý…" : "Đóng gói và trừ kho"}
+          </button>
+        )}
+
+        <button className="outbound-print-button" type="button" onClick={() => window.print()}>
+          <span aria-hidden>▤</span> In phiếu nhặt hàng
         </button>
-      </div>
-      {err && (
-        <p className="err" role="alert">
-          {err}
-        </p>
-      )}
-      <span className="note">
-        Chưa kết nối API GHN hoặc GHTK. Mã vận đơn là mã mẫu do hệ thống sinh.
-      </span>
+      </section>
     </div>
   );
 }
