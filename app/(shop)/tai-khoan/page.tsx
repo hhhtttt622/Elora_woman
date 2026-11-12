@@ -6,6 +6,7 @@ import PasswordForm from '@/components/PasswordForm';
 import { all, get } from '@/lib/db';
 import { sweepHoldsOnce } from '@/lib/inventory';
 import ProfileForm from '@/components/ProfileForm';
+import ReturnRequestForm from '@/components/ReturnRequestForm';
 import { ORDER_STATUS, HOLD_STATUS, fmt, dmy, dmyHm, hoursLeft, nowIso } from '@/lib/util';
 export const dynamic = 'force-dynamic';
 
@@ -70,9 +71,16 @@ export default async function Account({ searchParams }: { searchParams: { tab?: 
       {tab === 'password' && <PasswordForm forced={s.mustChangePw} />}
 
       {tab === 'orders' && (orders.length === 0 ? <div className="card" style={{ background: '#F6EEEF' }}>Bạn chưa có đơn hàng nào.</div> :
-        <div className="scroll"><table className="tb" style={{ minWidth: 720 }}><caption>Các đơn đã đặt</caption>
-          <thead><tr><th>Mã đơn</th><th>Ngày</th><th>Sản phẩm</th><th>Tổng</th><th>Trạng thái</th></tr></thead>
-          <tbody>{orders.map((o) => <tr key={o.id}><td><b>{o.code}</b></td><td>{dmy(o.created_at)}</td><td>{o.lines.map((l: any) => `${l.qty} × ${l.name}`).join('; ')}</td><td>{fmt(o.total)}</td><td><span className={'badge' + (o.status === 3 ? ' dark' : o.status === 0 ? ' pink' : ' sand')}>{ORDER_STATUS[o.status]}</span></td></tr>)}</tbody></table></div>)}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>{orders.map((o) => (
+          <div key={o.id} className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <b>{o.code}</b><span className={'badge' + (o.status === 3 ? ' dark' : o.status === 0 ? ' pink' : ' sand')}>{ORDER_STATUS[o.status]}</span>
+            </div>
+            <span className="note">{dmy(o.created_at)} · {fmt(o.total)}</span>
+            <ul className="list">{o.lines.map((l: any) => <li key={l.id}>{l.qty} × {l.name}</li>)}</ul>
+            {o.status === 3 && <ReturnRequestForm orderCode={o.code} skus={o.lines.map((l: any) => ({ sku: l.sku, name: l.name }))} />}
+          </div>))}
+        </div>)}
 
       {tab === 'track' && (orders.length === 0 ? <div className="card" style={{ background: '#F6EEEF' }}>Chưa có đơn nào để theo dõi.</div> :
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 20 }}>{tracking.map((o) => (

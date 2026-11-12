@@ -40,6 +40,21 @@ export async function placeOrderAction(input: { lines: { sku: string; qty: numbe
   } catch (e: any) { return { error: e.message }; }
 }
 
+// UC-11 Yêu cầu đổi trả
+export async function requestReturnAction(orderCode: string, sku: string, reason: string): Promise<Res> {
+  let u;
+  try { u = await requirePerm('UC-11'); } catch (e: any) { return { error: e.message }; }
+  const REASONS = ['Sản phẩm bị lỗi / hư hỏng', 'Sản phẩm không đúng mô tả', 'Giao sai sản phẩm / màu sắc / size', 'Muốn đổi sang size khác', 'Muốn đổi sang màu khác', 'Không còn nhu cầu sử dụng'];
+  if (!REASONS.includes(reason)) return { error: 'Chọn lý do đổi trả.' };
+  const o = get<any>('SELECT * FROM orders WHERE code=? AND user_id=? AND status=3', orderCode, u.id);
+  if (!o) return { error: 'Chỉ đổi trả đơn đã giao của bạn.' };
+  if (!get('SELECT 1 FROM order_lines WHERE order_id=? AND sku=?', o.id, sku)) return { error: 'Sản phẩm không thuộc đơn này.' };
+  if (get('SELECT 1 FROM return_tickets WHERE order_code=? AND sku=? AND status=\'Chờ kiểm tra\'', orderCode, sku)) return { error: 'Sản phẩm này đã có phiếu đang chờ xử lý.' };
+  run('INSERT INTO return_tickets(order_code,user_id,sku,reason,created_at) VALUES(?,?,?,?,?)', orderCode, u.id, sku, reason, nowIso());
+  revalidatePath('/tai-khoan');
+  return { ok: true, msg: `Đã gửi yêu cầu đổi trả ${sku}. Nhân viên sẽ liên hệ bạn sớm.` };
+}
+
 // UC-10
 export async function createConsultAction(_: Res, f: FormData): Promise<Res> {
   let u;

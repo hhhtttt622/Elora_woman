@@ -780,7 +780,7 @@ export async function receiveReturn(
 ): Promise<R> {
   return guard("UC-33", () => {
     if (
-      !["Đổi size", "Đổi màu", "Nghi hàng lỗi", "Khách không ưng"].includes(
+      !['Sản phẩm bị lỗi / hư hỏng', 'Sản phẩm không đúng mô tả', 'Giao sai sản phẩm / màu sắc / size', 'Muốn đổi sang size khác', 'Muốn đổi sang màu khác', 'Không còn nhu cầu sử dụng'].includes(
         reason,
       )
     )

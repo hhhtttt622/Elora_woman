@@ -3,7 +3,14 @@ import { useState } from 'react';
 import { useRun } from './Flash';
 import { receiveReturn } from '@/app/actions/admin';
 
-const RETURN_REASONS = ['Đổi size', 'Đổi màu', 'Nghi hàng lỗi', 'Khách không ưng'];
+const RETURN_REASONS = [
+  'Sản phẩm bị lỗi / hư hỏng',
+  'Sản phẩm không đúng mô tả',
+  'Giao sai sản phẩm / màu sắc / size',
+  'Muốn đổi sang size khác',
+  'Muốn đổi sang màu khác',
+  'Không còn nhu cầu sử dụng',
+];
 
 export default function ReturnForm({ orders }: { orders: { code: string; label: string; skus: { sku: string; label: string }[] }[] }) {
   const { run, pending } = useRun();
