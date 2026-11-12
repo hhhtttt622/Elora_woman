@@ -4,6 +4,12 @@ import { ensureVariant } from '../lib/inventory';
 import { mkSku, slugify, nowIso, SHIPPING_FEE } from '../lib/util';
 
 const db = getDb();
+const STAFF: [string, string, string, string][] = [
+  ['Quản trị ELORA', 'admin@elora.vn', 'admin', 'admin123'],
+  ['Stylist Mai Anh', 'stylist@elora.vn', 'stylist', 'stylist123'],
+  ['Stylist Thanh Vân', 'stylist2@elora.vn', 'stylist', 'stylist123'],
+  ['Nhân viên kho Quốc Bảo', 'kho@elora.vn', 'staff', 'nhanvien123'],
+];
 if (process.argv.includes('--reset')) {
   db.exec('DROP TABLE IF EXISTS repair_items');
   for (const t of ['inventory_logs','workshop_returns','return_tickets','transfers','po_lines','purchase_orders','capsule_items','capsules','holds','consults','order_lines','orders','stocks','variants','products','sessions','users'])
@@ -46,20 +52,25 @@ if (get<any>('SELECT COUNT(*) c FROM products').c > 0) {
       const sizes = category === 'Phụ kiện' ? ['FS'] : ['S', 'M', 'L', 'XL'];
       for (const color of colors) for (const size of sizes) ensureVariant(product.id, color, size);
     }
+    for (const [name, email, role, password] of STAFF) {
+      if (get('SELECT id FROM users WHERE email=?', email)) continue;
+      run(
+        "INSERT INTO users(name,email,phone,password_hash,role,status,created_at) VALUES(?,?,'',?,?,'active',?)",
+        name,
+        email,
+        hash(password),
+        role,
+        nowIso(),
+      );
+    }
   });
-  console.log('Đã cập nhật tên sản phẩm và các biến thể màu. SKU mới có tồn kho bằng 0; hãy nhập tồn trước khi bán.');
+  console.log('Đã cập nhật tên sản phẩm, biến thể và bổ sung tài khoản mẫu còn thiếu.');
   process.exit(0);
 }
 
 tx(() => {
   // người dùng: admin, stylist, nhân viên do admin tạo (BR-18); khách hàng tự đăng ký
   const pw = hash('elora123');
-  const STAFF: [string, string, string, string][] = [
-    ['Quản trị ELORA', 'admin@elora.vn', 'admin', 'admin123'],
-    ['Stylist Mai Anh', 'stylist@elora.vn', 'stylist', 'stylist123'],
-    ['Stylist Thanh Vân', 'stylist2@elora.vn', 'stylist', 'stylist123'],
-    ['Nhân viên kho Quốc Bảo', 'kho@elora.vn', 'staff', 'nhanvien123'],
-  ];
   for (const [n, e, r, p] of STAFF) run("INSERT INTO users(name,email,phone,password_hash,role,status,created_at) VALUES(?,?,'',?,?,'active',?)", n, e, hash(p), r, nowIso());
   const CUS: [string, string, string, string, number, number, string, string][] = [
     ['Nguyễn Thu Hà', 'ha.nguyen@example.com', '0900 000 000', 'M', 160, 52, 'Be, Xám, Xanh navy', 'Văn phòng'],
