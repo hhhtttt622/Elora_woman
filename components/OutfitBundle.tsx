@@ -5,7 +5,7 @@ import { useCart } from '@/lib/cart';
 import { fmt, sizeText } from '@/lib/util';
 
 type V = { sku: string; color: string; size: string; available: number; price: number };
-type P = { id: number; slug: string; name: string; category: string; price: number; image: string; tone: string; variants: V[] };
+type P = { id: number; slug: string; name: string; category: string; price: number; image: string; imageIsReference: boolean; tone: string; variants: V[] };
 export default function OutfitBundle({ products }: { products: P[] }) {
   const { add } = useCart(); const [selected, setSelected] = useState<number[]>(products.length ? [products[0].id] : []);
   const [choices, setChoices] = useState<Record<number, { color: string; size: string }>>({}); const [message, setMessage] = useState('');
@@ -32,7 +32,10 @@ export default function OutfitBundle({ products }: { products: P[] }) {
         const color = choices[p.id]?.color || '';
         const sizes = [...new Set(p.variants.filter((v) => v.color === color && v.available > 0).map((v) => v.size))];
         return <article key={p.id} className="card" style={{ padding: 12, gap: 10 }}>
-          {p.image ? <img src={p.image} alt={p.name} style={{ width: '100%', height: 190, objectFit: 'cover' }} /> : <div style={{ height: 190, background: p.tone }} />}
+          <div style={{ position: 'relative' }}>
+            {p.image ? <img src={p.image} alt={p.name} style={{ width: '100%', height: 190, objectFit: 'cover' }} /> : <div style={{ height: 190, background: p.tone }} />}
+            {p.imageIsReference && <span className="note" style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(255,255,255,.92)', padding: '4px 7px' }}>Ảnh tham khảo</span>}
+          </div>
           <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" checked={selected.includes(p.id)} onChange={(e) => setSelected((ids) => e.target.checked ? [...ids, p.id] : ids.filter((id) => id !== p.id))} /><b>{p.name}</b></label>
           <span className="note">{p.category}</span><b>{fmt(p.variants.find((v)=>v.color===color&&v.size===choices[p.id]?.size)?.price||p.price)}</b>
           <div className="grid" style={{ gap: 8 }}><label className="fl"><span className="lbl">Màu</span><select className="fld" value={color} onChange={(e) => choose(p, 'color', e.target.value)}><option value="">Chọn màu</option>{colors.map((c) => <option key={c}>{c}</option>)}</select></label><label className="fl"><span className="lbl">Kích thước</span><select className="fld" value={choices[p.id]?.size || ''} onChange={(e) => choose(p, 'size', e.target.value)}><option value="">Chọn size</option>{sizes.map((s) => <option key={s} value={s}>{sizeText(s)}</option>)}</select></label></div>

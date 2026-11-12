@@ -15,6 +15,7 @@ export type ProductView = {
   description: string;
   tone: string;
   image: string;
+  imageIsReference: boolean;
   active: number;
   featured: number;
   isNew: number;
@@ -23,6 +24,27 @@ export type ProductView = {
   variants: VariantRow[];
   inStock: boolean;
   promotionLabels: string[];
+};
+
+const PRODUCT_STOCK_PHOTOS: Record<string, string> = {
+  DSM: '/images/products/dsm.jpg',
+  DRS: '/images/products/drs.jpg',
+  DLU: '/images/products/dlu.jpg',
+  BLS: '/images/products/bls.jpg',
+  BLZ: '/images/products/blz.jpg',
+  KNT: '/images/products/knt.jpg',
+  BLK: '/images/products/blk.jpg',
+  SKT: '/images/products/skt.jpg',
+  SKP: '/images/products/skp.jpg',
+  SKA: '/images/products/ska.jpg',
+  PNB: '/images/products/pnb.jpg',
+  PNT: '/images/products/pnt.jpg',
+  PNC: '/images/products/pnc.jpg',
+  BAG: '/images/products/bag.jpg',
+  SCF: '/images/products/scf.jpg',
+  SHO: '/images/products/sho.jpg',
+  ERG: '/images/products/erg.jpg',
+  BLT: '/images/products/blt.jpg',
 };
 
 /** Chỉ dùng khi render trang (đọc qua getVariants() đã cache theo request). */
@@ -56,7 +78,16 @@ export function allProducts(opts: { includeInactive?: boolean } = {}): ProductVi
       const match = (r: any) => r.entity_type === 'product' ? Number(r.entity_id) === p.id : r.entity_type === 'category' ? r.entity_id === p.category : r.entity_id === p.collection;
       return !rules.some((r) => r.rule_type === 'exclude' && match(r)) && (!rules.some((r) => r.rule_type === 'include') || rules.some((r) => r.rule_type === 'include' && match(r)));
     }).map((promo) => `${promo.name} · ${promo.kind === 'percent' ? `giảm ${promo.value}%` : `${promo.value.toLocaleString('vi-VN')}đ`} · ${promo.code}`);
-    return { ...p, variants: mine, colors: [...colors], sizes: [...sizes], inStock, promotionLabels };
+    return {
+      ...p,
+      image: p.image || PRODUCT_STOCK_PHOTOS[p.code] || '',
+      imageIsReference: !p.image && Boolean(PRODUCT_STOCK_PHOTOS[p.code]),
+      variants: mine,
+      colors: [...colors],
+      sizes: [...sizes],
+      inStock,
+      promotionLabels,
+    };
   });
 }
 export function productBySlug(slug: string) {

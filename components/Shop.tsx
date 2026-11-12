@@ -86,7 +86,7 @@ export function ShopFooter() {
 
 const DARK_TONES = new Set(['#1E1B1E', '#1F2A44', '#2A262A', '#7A5A44']);
 
-export function ProductImage({ p, label }: { p: Pick<ProductView, 'tone' | 'category' | 'isNew' | 'salePrice' | 'image'>; label?: string }) {
+export function ProductImage({ p, label }: { p: Pick<ProductView, 'tone' | 'category' | 'isNew' | 'salePrice' | 'image' | 'imageIsReference'>; label?: string }) {
   const dark = DARK_TONES.has(p.tone);
   return (
     <div
@@ -121,6 +121,21 @@ export function ProductImage({ p, label }: { p: Pick<ProductView, 'tone' | 'cate
           MỚI
         </span>
       ) : null}
+      {p.imageIsReference && (
+        <span
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            background: "rgba(255,255,255,.92)",
+            color: "#1E1B1E",
+            fontSize: 10,
+            letterSpacing: ".04em",
+          }}
+        >
+          Ảnh tham khảo
+        </span>
+      )}
       <span>{label || p.category}</span>
     </div>
   );

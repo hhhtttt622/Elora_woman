@@ -21,7 +21,7 @@ export default async function Detail({ params }: { params: { slug: string } }) {
     WHERE r.product_id=? AND p.active=1 ORDER BY r.position`, p.id);
   const related = relatedRows.map((r) => {
     const product = list.find((x) => x.id === r.id);
-    return product ? { ...r, price: product.salePrice || product.price, variants: product.variants.filter((v) => v.variantActive).map((v) => ({ sku: v.sku, color: v.color, size: v.size, available: v.available, price: product.salePrice || v.priceOverride || product.price, image: v.image })) } : null;
+    return product ? { ...r, image: product.image, imageIsReference: product.imageIsReference, price: product.salePrice || product.price, variants: product.variants.filter((v) => v.variantActive).map((v) => ({ sku: v.sku, color: v.color, size: v.size, available: v.available, price: product.salePrice || v.priceOverride || product.price, image: v.image })) } : null;
   }).filter(Boolean) as any[];
   const u = await userPromise;
   const me = u ? get<any>('SELECT height_cm h, weight_kg w FROM users WHERE id=?', u.id) : null;
@@ -45,7 +45,7 @@ export default async function Detail({ params }: { params: { slug: string } }) {
           </dl>
         </div>
       </div>
-      {related.length > 0 && <OutfitBundle products={[{ id: p.id, slug: p.slug, name: p.name, category: p.category, price: p.salePrice || p.price, image: p.image, tone: p.tone, variants: p.variants.filter((v) => v.variantActive).map((v) => ({ sku: v.sku, color: v.color, size: v.size, available: v.available, price: p.salePrice || v.priceOverride || p.price })) }, ...related]} />}
+      {related.length > 0 && <OutfitBundle products={[{ id: p.id, slug: p.slug, name: p.name, category: p.category, price: p.salePrice || p.price, image: p.image, imageIsReference: p.imageIsReference, tone: p.tone, variants: p.variants.filter((v) => v.variantActive).map((v) => ({ sku: v.sku, color: v.color, size: v.size, available: v.available, price: p.salePrice || v.priceOverride || p.price })) }, ...related]} />}
       {showGuide && (
         <section style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <h2 className="disp" style={{ fontSize: 36 }}>Hướng dẫn chọn size</h2>

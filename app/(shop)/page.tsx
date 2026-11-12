@@ -50,7 +50,10 @@ export default async function Home() {
             <p style={{ maxWidth: 480, color: '#3F383D' }}>Trang phục công sở cho phụ nữ hiện đại, kèm stylist phối đồ riêng theo công việc và dáng người của bạn.</p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}><Link href="/san-pham" className="btn">Mua sắm ngay</Link><Link href="/tu-van" className="ghost" style={{ minHeight: 48 }}>Nhận tư vấn phối đồ</Link></div>
           </div>
-          <div style={{ aspectRatio: '4/5', background: 'linear-gradient(160deg,#EBC5CB,#E8DCCB 60%,#F6EEEF)', display: 'flex', alignItems: 'flex-end', padding: 20 }}><span style={{ background: 'rgba(255,255,255,.9)', padding: '6px 10px', fontSize: 12, letterSpacing: '.14em', textTransform: 'uppercase', fontWeight: 600 }}>Ảnh chiến dịch (chỗ trống)</span></div>
+          <div style={{ aspectRatio: '4/5', position: 'relative', overflow: 'hidden', background: '#E8DCCB' }}>
+            <img src="/images/products/blz.jpg" alt="Ảnh tham khảo áo blazer trong bộ sưu tập Thu Đông 2026" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <span style={{ position: 'absolute', left: 20, bottom: 20, background: 'rgba(255,255,255,.92)', padding: '8px 12px', fontSize: 12, letterSpacing: '.08em', fontWeight: 600 }}>Ảnh tham khảo · Thu Đông 2026 · ELORA woman</span>
+          </div>
         </div>
       </section>
 
